@@ -5,12 +5,13 @@ import { stopIndexForFloor } from '../dispatch';
 import { getFloor, pendingAlight, pendingBoard } from '../queries';
 import type { Elevator, SimConfig, World } from '../types';
 
-/** Is there same-direction work at stop `idx` or further along `dir`? */
-function sameDirWorkHereOrAhead(world: World, e: Elevator, idx: number, dir: 1 | -1): boolean {
-  for (let j = idx; j >= 0 && j < e.stops.length; j += dir) {
+/** Is there ANY work (alight or board, either direction) strictly ahead of `idx` along `dir`? */
+function anyWorkAhead(world: World, e: Elevator, idx: number, dir: 1 | -1): boolean {
+  for (let j = idx + dir; j >= 0 && j < e.stops.length; j += dir) {
     const f = e.stops[j];
     if (pendingAlight(world, e.id, f).length > 0) return true;
-    if (pendingBoard(world, e.id, f, dir).length > 0) return true;
+    if (pendingBoard(world, e.id, f, 1).length > 0) return true;
+    if (pendingBoard(world, e.id, f, -1).length > 0) return true;
   }
   return false;
 }
@@ -34,18 +35,23 @@ export function stepBoarding(world: World, cfg: SimConfig): void {
         p.legIndex += 1;
         p.state = 'TRANSFER';
         p.atFloor = floorId;
+        p.onElev = undefined;
         floor.waiting.push(p.id);
         world.stats.transfers += 1;
       }
     }
 
-    // Resolve the departure direction: keep travelling the same way when there is
-    // same-direction work here or ahead; otherwise this is a turnaround — reverse,
-    // so a car at a terminal can pick up the opposite-direction queue.
+    // Resolve the departure direction idempotently (no per-tick flapping). Commit
+    // to `curDir` while ANY work lies strictly ahead; only at a turnaround — nothing
+    // ahead and an opposite-direction queue waiting here — flip so the car boards it.
     const idx = stopIndexForFloor(e, floorId);
     const curDir: 1 | -1 = e.dir === 0 ? 1 : e.dir;
-    if (!sameDirWorkHereOrAhead(world, e, idx, curDir)) {
-      e.dir = curDir === 1 ? -1 : 1;
+    const opposite: 1 | -1 = curDir === 1 ? -1 : 1;
+    if (
+      !anyWorkAhead(world, e, idx, curDir) &&
+      pendingBoard(world, e.id, floorId, opposite).length > 0
+    ) {
+      e.dir = opposite;
     }
 
     // BOARD SECOND — groups board atomically or not at all; ALL_CALL ignores direction.

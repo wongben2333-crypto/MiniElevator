@@ -99,12 +99,16 @@ export function selectNextTarget(
   };
 
   const back = dir === 1 ? -1 : 1;
+  // LOOK sweep: commit to the current direction while ANY work (either direction)
+  // still lies ahead; only reverse once nothing remains ahead. Reversing early let a
+  // car oscillate in one sub-region while a queue at the far terminal starved.
+  // Policy work is still preferred within a direction.
   const a1 = scan(dir, includeCurrent, policyPick);
   if (a1 !== null) return { index: a1, dir };
-  const b1 = scan(back, false, policyPick);
-  if (b1 !== null) return { index: b1, dir: back };
   const a2 = scan(dir, includeCurrent, anyWork);
   if (a2 !== null) return { index: a2, dir };
+  const b1 = scan(back, false, policyPick);
+  if (b1 !== null) return { index: b1, dir: back };
   const b2 = scan(back, false, anyWork);
   if (b2 !== null) return { index: b2, dir: back };
   return null;
