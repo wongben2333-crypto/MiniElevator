@@ -17,7 +17,7 @@ export const DEFAULT_CONFIG: SimConfig = {
   backtrackPenalty: 6,
   alightTime: 0,
   patience: 60,
-  pressureThresholdTicks: 300,
+  pressureThresholdTicks: 600,
   transferThreshold: 3,
   maxSpeed: 2,
   dayLengthTicks: 10800, // 180s at 60Hz
@@ -66,17 +66,17 @@ export const ELEVATOR_PALETTE = [
 export const ELEVATOR_SPECS: ElevatorSpec[] = [
   {
     color: LOW_COLOR,
-    stops: [1, 2, 3, 4, 5],
-    capacity: 8,
-    speed: 1.5,
+    stops: [-1, 1, 2, 3, 4, 5],
+    capacity: 10,
+    speed: 1.6,
     policy: 'SCAN',
     idleFloor: LOBBY_FLOOR,
   },
   {
     color: HIGH_COLOR,
     stops: [1, 5, 6, 7, 8, 9, 10],
-    capacity: 8,
-    speed: 1.5,
+    capacity: 10,
+    speed: 1.6,
     policy: 'SCAN',
     idleFloor: LOBBY_FLOOR,
   },
@@ -86,10 +86,10 @@ export const PHASE_ORDER: Phase[] = ['morning', 'midday', 'evening', 'night'];
 
 /** Passengers spawned per second during each phase. */
 export const SPAWN_PER_SECOND: Record<Phase, number> = {
-  morning: 0.5,
-  midday: 0.25,
-  evening: 0.5,
-  night: 0.1,
+  morning: 0.3,
+  midday: 0.15,
+  evening: 0.3,
+  night: 0.06,
 };
 
 export const UPGRADE_CHOICES: ReadonlyArray<{ kind: 'addElevator' | 'addCapacity'; label: string }> = [
