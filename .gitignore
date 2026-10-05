@@ -1,0 +1,15 @@
+# 本地工具状态
+.omo/
+.codegraph/
+
+# Node / 构建产物
+node_modules/
+dist/
+*.local
+
+# 编辑器 / 系统
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
