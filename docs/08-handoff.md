@@ -7,7 +7,7 @@
 
 ## 1. 一句话状态
 
-**MVP 已完成并可玩**：Canvas 2D + TypeScript + Vite + Vitest，运行期 0 依赖；`npm.cmd test` **103 项通过 / 18 文件**，`typecheck`、`build` 均通过；Playwright 手动 QA 已验证核心交互与失败/升级流程。
+**MVP 已完成并可玩**：Canvas 2D + TypeScript + Vite + Vitest，运行期 0 依赖；`npm.cmd test` **112 项通过 / 20 文件**，`typecheck`、`build` 均通过；Playwright 手动 QA 已验证核心交互与失败/升级流程。
 
 **评审门禁已关闭**（本轮独立复核）：
 - BLOCKER-2「假一天测试」→ **PASS**：新增的 `integration_shipped.test.ts` 使用真实出厂配置（180s/天），非加速日。
@@ -54,7 +54,7 @@
 
 ## 4. 测试与验证现状
 
-- 测试文件 18 个，103 用例：rng / queries / route(BFS+A*) / dispatch / view / 5 个系统 / sim 编排 / **出厂配置三日存活 + 无孤立等待者** / **dispatch 终点饥馑回归** / 2 日集成 / DOM 纯净守卫 / 确定性。
+- 测试文件 20 个，112 用例：rng / queries / route(BFS+A*) / dispatch / view / 5 个系统 / sim 编排 / **出厂配置三日存活 + 无孤立等待者** / **dispatch 终点饥馑回归** / **score 评分** / **replay 回放** / 2 日集成 / DOM 纯净守卫 / 确定性。
 - 手动 QA（Playwright，真实页面）已验证：
   - 送达、换乘（`transfers > 0`）；
   - 拖拽改线：电梯 0 停靠 `[-1,1,2,3,4,5]` → `[-1,1,2,3,4,5,7,8,9,10]`；
@@ -88,13 +88,14 @@
 | NOTE | `backtrackPenalty` / `transferThreshold` 定义但未使用 | 文档如此，代码未接（非阻塞） |
 | NOTE | 满载同层停靠会有 IDLE↔DWELL 空转 | 良性，非死锁 |
 | NOTE | `addElevator` 不去重 `stops`；停靠表若乱序则空间序判定有偏差 | 低危，未处理 |
-| M3 | 评分/星级、存档/回放 | 未做 |
+| M3 | 评分/星级、存档/回放 | ✅ 完成（`src/score.ts` 生存星级+综合分、HUD 展示；`src/replay.ts` seed+命令流回放；回放仅内部 API，无 UI） |
+| M3 | 楼层加建 + 租户入驻 | 未做 |
 | M4 | 突发事件、音效、多地图、移动端 | 未做 |
 
 ## 8. 下一步建议（按优先级）
 
 1. **关闭评审门禁**：重跑回传复核（reviewer 会话 `ses_ef30bc3ffeU9x0cKTWABDU4W`，可用 `task_id` 续）或新起一个 ultrabrain 评审。
-2. **M3**：评分与星级、`seed + 命令流` 存档/回放（架构已就绪，`Command` 已定义）。
+2. **M3 剩余**：楼层加建 + 租户入驻（评分/星级与 `seed + 命令流` 回放已完成：`src/score.ts`、`src/replay.ts`）。
 3. **M4**：突发事件系统（停电/检修/演练/VIP）、WebAudio 音效、多建筑地图、移动端触控。
 4. **可选**：实现 `ZONE` 差异化、接入 `backtrackPenalty`（防止换乘抖动）、无头 KPI 跑分脚本。
 
