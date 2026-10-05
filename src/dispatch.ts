@@ -65,6 +65,7 @@ export function selectNextTarget(
   world: World,
   elev: Elevator,
   cfg: SimConfig,
+  includeCurrent = true,
 ): { index: number; dir: 1 | -1 } | null {
   void cfg;
   const dir = normalizeDir(elev.dir);
@@ -87,7 +88,7 @@ export function selectNextTarget(
     return null;
   };
 
-  const ahead = scan(dir, true);
+  const ahead = scan(dir, includeCurrent);
   if (ahead !== null) return { index: ahead, dir };
 
   const back = dir === 1 ? -1 : 1;

@@ -193,4 +193,25 @@ describe('selectNextTarget (SCAN sweep)', () => {
 
     expect(selectNextTarget(w, e, cfg)).toEqual({ index: 2, dir: 1 });
   });
+
+  it('excludes the current stop when leaving so a full car cannot stall', () => {
+    const here = passenger(1, 1, 'office', { plan: [leg(1, 1, 3, 1)] });
+    const ahead = passenger(2, 2, 'office', { plan: [leg(1, 2, 3, 1)] });
+    const e = elevator(1, [1, 2, 3], { pos: 1, dir: 1 });
+    const w = world({
+      floors: [
+        floor(1, 'lobby', { waiting: [1] }),
+        floor(2, 'office', { waiting: [2] }),
+        floor(3, 'office'),
+      ],
+      elevators: [e],
+      passengers: new Map([
+        [1, here],
+        [2, ahead],
+      ]),
+    });
+
+    expect(selectNextTarget(w, e, cfg, true)).toEqual({ index: 0, dir: 1 });
+    expect(selectNextTarget(w, e, cfg, false)).toEqual({ index: 1, dir: 1 });
+  });
 });
