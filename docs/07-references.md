@@ -36,6 +36,7 @@
 - 链接：https://www.gdcvault.com/play/1024250/-Mini-Metro-When-Less （YouTube: https://www.youtube.com/watch?v=kmHXk4Y35QM）
 - 要点：极简 UI、"玩具火车轨道"心态、无惩罚的线路重编辑、用视觉语言替代文字。
 - **我方借鉴**：无文字引导；拖拽即编辑、无成本重排；HUD 尽量隐形。
+- **视觉标杆**：本作外观以 Mini Metro 极简风为准（见 [01 §9](01-game-design.md)）。
 
 ### Postmortem: Dinosaur Polo Club's Mini Metro
 - 链接：https://www.gamedeveloper.com/audio/postmortem-dinosaur-polo-club-s-i-mini-metro-i-

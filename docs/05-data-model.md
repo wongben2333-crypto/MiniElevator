@@ -141,7 +141,7 @@ export interface SimConfig {
 }
 ```
 
-## 9. 事件（可选，供渲染/音效订阅）
+## 9. 事件（可选，供渲染订阅）
 
 ```ts
 export type SimEvent =
