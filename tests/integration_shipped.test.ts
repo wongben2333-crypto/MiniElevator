@@ -28,4 +28,16 @@ describe('shipped-configuration survival', () => {
       expect(w.day, `seed ${seed}`).toBeGreaterThanOrEqual(3);
     }
   });
+
+  it('leaves no structurally-stranded waiter (empty plan) across seeds', () => {
+    for (const seed of [1, 2, 3, 5, 7, 11, 42]) {
+      const w = createWorld(seed, cfg);
+      const rng = mulberry32(w.seed);
+      advance(w, cfg, rng, cfg.dayLengthTicks * 3 + 5);
+      const stranded = [...w.passengers.values()].filter(
+        (p) => (p.state === 'WAIT' || p.state === 'TRANSFER') && p.plan.length === 0,
+      );
+      expect(stranded.map((p) => p.id), `seed ${seed}`).toEqual([]);
+    }
+  });
 });

@@ -11,7 +11,7 @@
 | 项 | 状态 |
 |---|---|
 | 阶段 | **可玩 MVP 完成**（M0–M2 + M3 部分） |
-| 测试 | `npm.cmd test` 99 通过 / 17 文件；typecheck、build 通过 |
+| 测试 | `npm.cmd test` 103 通过 / 18 文件；typecheck、build 通过 |
 | 定位 | 个人实验项目，**轻量优先** |
 | 技术基调 | Canvas 2D + TypeScript + Vite + Vitest，**运行期 0 依赖** |
 | 参考 | Mini Metro（Dinosaur Polo Club）的乘客寻路与"观察型系统"设计 |

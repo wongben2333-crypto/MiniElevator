@@ -109,4 +109,4 @@
 | M3 元循环 | 🟡 部分（昼夜升级二选一：新增电梯/容量；评分/存档未做） |
 | M4 打磨 | ⬜ 未开始 |
 
-> 实现说明：Canvas 2D + TypeScript + Vite + Vitest，运行期 0 依赖；`sim/route/dispatch/view/systems` 均无 DOM（有守卫测试）；98 项单测 + 3 日无头集成通过。手动 QA（Playwright）已验证：送达、换乘、拖拽编辑线路、昼夜升级、过载失败命名瓶颈楼层。
+> 实现说明：Canvas 2D + TypeScript + Vite + Vitest，运行期 0 依赖；`sim/route/dispatch/view/systems` 均无 DOM（有守卫测试）；103 项单测 + 出厂配置 3 日无头集成通过。手动 QA（Playwright）已验证：送达、换乘、拖拽编辑线路、昼夜升级、过载失败命名瓶颈楼层。

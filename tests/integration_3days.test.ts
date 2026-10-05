@@ -4,7 +4,8 @@ import { mulberry32, type Rng } from '../src/rng';
 import { applyCommand, createWorld, step } from '../src/sim';
 import type { Passenger, SimConfig, World } from '../src/types';
 
-// Fast day (600 ticks = 10s) so a 3-day run stays cheap.
+// Fast day (600 ticks = 10s) so a 3-day run stays cheap. This is NOT the shipped
+// balance — see integration_shipped.test.ts for full-length (180s) days.
 const fast: SimConfig = { ...DEFAULT_CONFIG, dayLengthTicks: 600 };
 
 function advance(w: World, cfg: SimConfig, rng: Rng, ticks: number): void {
@@ -25,7 +26,7 @@ function assertFinite(w: World): void {
 }
 
 describe('3-day headless integration', () => {
-  it('survives three days without throwing or producing NaN', () => {
+  it('survives three accelerated days without throwing or producing NaN', () => {
     const w = createWorld(3, fast);
     const rng = mulberry32(w.seed);
     advance(w, fast, rng, fast.dayLengthTicks * 3 + 5);
