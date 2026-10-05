@@ -1,6 +1,8 @@
 // Stats + overlay layer. Drawn on top of the existing frame — never clears the
 // canvas and never touches the DOM; only the passed ctx is used.
 
+import { DEFAULT_CONFIG } from './config';
+import { completedDays, scoreWorld, starBar, starsForDays } from './score';
 import type { Phase, World } from './types';
 
 /** The world runs at 60 ticks/s (kept local: drawHud takes no config arg). */
@@ -85,6 +87,7 @@ function dim(ctx: CanvasRenderingContext2D): void {
 function drawStats(ctx: CanvasRenderingContext2D, world: World, paused: boolean): void {
   const labels: Label[] = [
     { text: `第 ${fmtInt(world.day)} 天 · ${PHASE_CN[world.phase]}`, font: FONT, color: TEXT, advance: LINE },
+    { text: `评级 ${starBar(starsForDays(completedDays(world)))}`, font: FONT, color: TEXT, advance: LINE },
     { text: `送达 ${fmtInt(world.stats.delivered)}`, font: FONT, color: TEXT, advance: LINE },
     { text: `换乘 ${fmtInt(world.stats.transfers)}`, font: FONT, color: TEXT, advance: LINE },
     { text: `最长等待 ${fmtInt(world.stats.maxWaitTicks / TICK_HZ)}s`, font: FONT, color: TEXT, advance: LINE },
@@ -111,12 +114,14 @@ function drawGameOver(ctx: CanvasRenderingContext2D, world: World): void {
   const over = world.gameOver;
   if (over === null) return;
   const floor = world.floors.find((f) => f.id === over.floor);
+  const grade = scoreWorld(world, DEFAULT_CONFIG);
   ctx.save();
   dim(ctx);
   const labels: Label[] = [
     { text: '电梯系统过载', font: TITLE_FONT, color: TEXT, advance: 34 },
     { text: `瓶颈楼层：${floor === undefined ? String(over.floor) : floor.name}`, font: FONT, color: TEXT, advance: 22 },
-    { text: `送达 ${fmtInt(world.stats.delivered)} 人`, font: FONT, color: MUTED, advance: 22 },
+    { text: `评价 ${starBar(grade.stars)} · 综合分 ${grade.score}`, font: FONT, color: TEXT, advance: 22 },
+    { text: `存活 ${grade.days} 天 · 送达 ${fmtInt(grade.delivered)} 人`, font: FONT, color: MUTED, advance: 22 },
   ];
   const total = totalAdvance(labels);
   drawLabelsCentered(ctx, labels, (ctx.canvas.height - total) / 2 + labels[0].advance / 2);

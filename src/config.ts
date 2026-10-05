@@ -92,6 +92,21 @@ export const SPAWN_PER_SECOND: Record<Phase, number> = {
   night: 0.06,
 };
 
+/**
+ * Reference targets that map raw run stats to a 0..100 quality score (see
+ * `score.ts`). Calibrated so a solid 3-day shipped run scores ~70.
+ */
+export const SCORE_TARGETS = {
+  /** Delivered passengers for full throughput credit. */
+  delivered: 200,
+  /** Tolerable average wait per delivered passenger (seconds). */
+  waitSeconds: 12,
+  /** Tolerable floors travelled per delivered passenger. */
+  energyPerDelivery: 5.5,
+  /** Transfers per delivered passenger considered harmless. */
+  transferRate: 0.15,
+} as const;
+
 export const UPGRADE_CHOICES: ReadonlyArray<{ kind: 'addElevator' | 'addCapacity'; label: string }> = [
   { kind: 'addElevator', label: '新增电梯' },
   { kind: 'addCapacity', label: '容量 +4' },
