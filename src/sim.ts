@@ -11,7 +11,7 @@ import { stepDayCycle } from './systems/daycycle';
 import { stepMovement } from './systems/movement';
 import { stepPressure } from './systems/pressure';
 import { stepSpawn } from './systems/spawn';
-import type { Command, Elevator, ElevatorSpec, Floor, SimConfig, World } from './types';
+import type { Command, Elevator, ElevatorSpec, Floor, Passenger, SimConfig, World } from './types';
 
 function buildFloors(): Floor[] {
   return BUILDING.map((b) => {
@@ -85,12 +85,32 @@ export function step(world: World, cfg: SimConfig, rng: Rng): void {
   stepPressure(world, cfg);
 }
 
+function isAtDestination(world: World, p: Passenger): boolean {
+  const f = getFloor(world, p.atFloor);
+  return f !== undefined && f.zone === p.destZone;
+}
+
+/** Mark an already-arrived passenger DONE and remove it from the world. */
+function deliverArrived(world: World, p: Passenger): void {
+  p.state = 'DONE';
+  const f = getFloor(world, p.atFloor);
+  if (f !== undefined) f.waiting = f.waiting.filter((id) => id !== p.id);
+  world.passengers.delete(p.id);
+  world.stats.delivered += p.group;
+}
+
 function replanWaiting(world: World, cfg: SimConfig): void {
-  for (const p of world.passengers.values()) {
-    if (p.state === 'WAIT' || p.state === 'TRANSFER') {
-      p.plan = findPlan(world, p, cfg) ?? [];
-      p.legIndex = 0;
+  for (const p of [...world.passengers.values()]) {
+    if (p.state !== 'WAIT' && p.state !== 'TRANSFER') continue;
+    // A waiting/transfer passenger already standing on a destination-zone floor has
+    // effectively arrived (can happen when a line edit drops them at a goal floor).
+    // Otherwise `findPlan` would return an empty plan and strand them un-boardable.
+    if (isAtDestination(world, p)) {
+      deliverArrived(world, p);
+      continue;
     }
+    p.plan = findPlan(world, p, cfg) ?? [];
+    p.legIndex = 0;
   }
 }
 
@@ -99,8 +119,9 @@ function dropOrphanedRiders(world: World, e: Elevator): void {
   const survivors: number[] = [];
   for (const pid of e.load) {
     const p = world.passengers.get(pid);
-    const leg = p?.plan[p.legIndex];
-    if (p === undefined || leg === undefined || e.stops.includes(leg.alightFloor)) {
+    if (p === undefined) continue; // dangling id: drop it rather than leak capacity
+    const leg = p.plan[p.legIndex];
+    if (leg === undefined || e.stops.includes(leg.alightFloor)) {
       survivors.push(pid);
       continue;
     }
@@ -117,6 +138,7 @@ function dropOrphanedRiders(world: World, e: Elevator): void {
     if (f !== undefined) {
       p.state = 'TRANSFER';
       p.atFloor = nearest;
+      p.onElev = undefined;
       f.waiting.push(pid);
     }
   }

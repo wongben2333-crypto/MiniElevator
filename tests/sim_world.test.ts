@@ -63,6 +63,34 @@ describe('applyCommand', () => {
     expect(p.plan.length).toBeGreaterThan(0);
   });
 
+  it('delivers a rider parked on a destination-zone floor instead of stranding it', () => {
+    const w = createWorld(1, cfg);
+    const e0 = w.elevators[0];
+    e0.pos = 5;
+    const p: Passenger = {
+      id: 999,
+      from: 1,
+      destZone: 'office',
+      dir: 1,
+      group: 1,
+      patience: 100_000,
+      state: 'RIDE',
+      atFloor: 1,
+      onElev: 0,
+      plan: [{ elevator: 0, boardFloor: 1, alightFloor: 5, rideDir: 1 }],
+      legIndex: 0,
+    };
+    w.passengers.set(999, p);
+    e0.load.push(999);
+
+    // Floor 5 leaves elevator 0; the nearest surviving stop (floor 4) is in the
+    // rider's destination zone, so the rider has effectively arrived.
+    applyCommand(w, { t: 'setStops', tick: 0, elev: 0, stops: [1, 2, 3, 4] }, cfg);
+
+    expect(w.passengers.has(999)).toBe(false);
+    expect(w.stats.delivered).toBe(1);
+  });
+
   it('setPolicy updates the elevator policy', () => {
     const w = createWorld(1, cfg);
     applyCommand(w, { t: 'setPolicy', tick: 0, elev: 0, policy: 'ALL_CALL' }, cfg);
