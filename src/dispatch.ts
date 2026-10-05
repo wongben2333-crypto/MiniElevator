@@ -78,22 +78,34 @@ export function selectNextTarget(
     return includeCurrent ? floor <= elev.pos : floor < elev.pos;
   };
 
-  const scan = (scanDir: 1 | -1, includeCurrent: boolean): number | null => {
+  const policyPick = (floor: FloorId): boolean => shouldStop(world, elev, floor);
+  // Fallback used only when policy finds nothing: any floor with any work, so a
+  // car never strands an opposite-direction queue (e.g. down-calls at a terminal).
+  const anyWork = (floor: FloorId): boolean =>
+    pendingAlight(world, elev.id, floor).length > 0 ||
+    pendingBoard(world, elev.id, floor, 1).length > 0 ||
+    pendingBoard(world, elev.id, floor, -1).length > 0;
+
+  const scan = (
+    scanDir: 1 | -1,
+    includeCurrent: boolean,
+    accept: (floor: FloorId) => boolean,
+  ): number | null => {
     const list = scanDir === 1 ? ordered : [...ordered].reverse();
     for (const stop of list) {
-      if (aheadOf(stop.floor, scanDir, includeCurrent) && shouldStop(world, elev, stop.floor)) {
-        return stop.index;
-      }
+      if (aheadOf(stop.floor, scanDir, includeCurrent) && accept(stop.floor)) return stop.index;
     }
     return null;
   };
 
-  const ahead = scan(dir, includeCurrent);
-  if (ahead !== null) return { index: ahead, dir };
-
   const back = dir === 1 ? -1 : 1;
-  const reversed = scan(back, false);
-  if (reversed !== null) return { index: reversed, dir: back };
-
+  const a1 = scan(dir, includeCurrent, policyPick);
+  if (a1 !== null) return { index: a1, dir };
+  const b1 = scan(back, false, policyPick);
+  if (b1 !== null) return { index: b1, dir: back };
+  const a2 = scan(dir, includeCurrent, anyWork);
+  if (a2 !== null) return { index: a2, dir };
+  const b2 = scan(back, false, anyWork);
+  if (b2 !== null) return { index: b2, dir: back };
   return null;
 }

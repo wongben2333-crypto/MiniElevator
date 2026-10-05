@@ -156,13 +156,19 @@ describe('stepBoarding — board and alight', () => {
     expect(f2.waiting).not.toContain(1);
   });
 
-  it('does not board a SCAN passenger riding the wrong direction', () => {
+  it('does not board an opposite-direction passenger mid-route when same-direction work lies ahead', () => {
     const down = passenger(1, 2, 'office', {
       state: 'WAIT',
       atFloor: 2,
       plan: [leg(1, 2, 1, -1)],
     });
+    const up = passenger(2, 3, 'office', {
+      state: 'WAIT',
+      atFloor: 3,
+      plan: [leg(1, 3, 5, 1)],
+    });
     const f2 = floor(2, 'office', { waiting: [1] });
+    const f3 = floor(3, 'office', { waiting: [2] });
     const e = elevator(1, [1, 2, 3], {
       state: 'DWELL',
       targetStopIndex: 1,
@@ -170,13 +176,18 @@ describe('stepBoarding — board and alight', () => {
       capacity: 8,
     });
     const w = world({
-      floors: [floor(1, 'lobby'), f2, floor(3, 'office')],
+      floors: [floor(1, 'lobby'), f2, f3],
       elevators: [e],
-      passengers: new Map([[1, down]]),
+      passengers: new Map([
+        [1, down],
+        [2, up],
+      ]),
     });
 
     stepBoarding(w, cfg);
 
+    // The up-passenger ahead keeps the car heading up, so the down-passenger waits.
+    expect(e.dir).toBe(1);
     expect(down.state).toBe('WAIT');
     expect(e.load).toEqual([]);
     expect(f2.waiting).toContain(1);

@@ -166,7 +166,7 @@ describe('selectNextTarget (SCAN sweep)', () => {
     expect(selectNextTarget(w, e, cfg)).toBeNull();
   });
 
-  it('ignores an opposite-direction board when SCAN', () => {
+  it('falls back to any call so an opposite-direction queue is not stranded', () => {
     const down = passenger(1, 2, 'office', { plan: [leg(1, 2, 1, -1)] });
     const e = elevator(1, [1, 2, 3], { pos: 1, dir: 1 });
     const w = world({
@@ -175,7 +175,8 @@ describe('selectNextTarget (SCAN sweep)', () => {
       passengers: new Map([[1, down]]),
     });
 
-    expect(selectNextTarget(w, e, cfg)).toBeNull();
+    expect(shouldStop(w, e, 2)).toBe(false);
+    expect(selectNextTarget(w, e, cfg)).toEqual({ index: 1, dir: 1 });
   });
 
   it('stops for an alight', () => {
