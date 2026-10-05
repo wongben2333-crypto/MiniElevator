@@ -3,6 +3,7 @@
 // of its own (the deterministic RNG is supplied by the caller).
 
 import { BUILDING, DEFAULT_CONFIG, ELEVATOR_PALETTE, ELEVATOR_SPECS, LOBBY_FLOOR } from './config';
+import { getFloor } from './queries';
 import { findPlan } from './route';
 import { mulberry32, type Rng } from './rng';
 import { stepBoarding } from './systems/boarding';
@@ -93,6 +94,35 @@ function replanWaiting(world: World, cfg: SimConfig): void {
   }
 }
 
+/** Force-alight riders whose alight floor was just removed from an elevator. */
+function dropOrphanedRiders(world: World, e: Elevator): void {
+  const survivors: number[] = [];
+  for (const pid of e.load) {
+    const p = world.passengers.get(pid);
+    const leg = p?.plan[p.legIndex];
+    if (p === undefined || leg === undefined || e.stops.includes(leg.alightFloor)) {
+      survivors.push(pid);
+      continue;
+    }
+    let nearest = e.stops[0];
+    let bestD = Infinity;
+    for (const s of e.stops) {
+      const d = Math.abs(s - e.pos);
+      if (d < bestD) {
+        bestD = d;
+        nearest = s;
+      }
+    }
+    const f = getFloor(world, nearest);
+    if (f !== undefined) {
+      p.state = 'TRANSFER';
+      p.atFloor = nearest;
+      f.waiting.push(pid);
+    }
+  }
+  e.load = survivors;
+}
+
 function addElevator(world: World, spec: ElevatorSpec): Elevator {
   const id = world.elevators.reduce((max, e) => Math.max(max, e.id), -1) + 1;
   const e = elevatorFromSpec(id, spec);
@@ -124,6 +154,7 @@ export function applyCommand(world: World, cmd: Command, cfg: SimConfig = DEFAUL
       e.targetStopIndex = 0;
       e.state = 'IDLE';
       e.dir = 1;
+      dropOrphanedRiders(world, e);
       replanWaiting(world, cfg);
       return;
     }

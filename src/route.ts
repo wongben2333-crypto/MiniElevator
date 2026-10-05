@@ -110,7 +110,7 @@ function floorEdges(
     const w =
       mode === 'bfs'
         ? BFS_BOARD
-        : estWait(world, e, floor, cfg) + (floor === passenger.from ? 0 : cfg.transferPenalty);
+        : estWait(world, e, floor, cfg) + (floor === passenger.atFloor ? 0 : cfg.transferPenalty);
     out.push({ to: { kind: 'elev', floor, elev: e.id }, w });
   }
   return out;
@@ -210,10 +210,10 @@ function collapse(world: World, path: PNode[]): Leg[] {
 
 function search(world: World, passenger: Passenger, cfg: SimConfig, mode: RouteMode): Leg[] | null {
   const goals = new Set<FloorId>(floorsMatching(world, passenger.destZone).map((f) => f.id));
-  if (goals.has(passenger.from)) return [];
+  if (goals.has(passenger.atFloor)) return [];
   if (goals.size === 0) return null;
 
-  const start: PNode = { kind: 'floor', floor: passenger.from };
+  const start: PNode = { kind: 'floor', floor: passenger.atFloor };
   const startKey = nodeKey(start);
   const gScore = new Map<string, number>();
   const came = new Map<string, PNode>();
