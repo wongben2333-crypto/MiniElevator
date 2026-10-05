@@ -10,10 +10,13 @@
 
 | 项 | 状态 |
 |---|---|
-| 阶段 | **设计阶段**（无游戏代码） |
+| 阶段 | **可玩 MVP 完成**（M0–M2 + M3 部分） |
+| 测试 | `npm.cmd test` 99 通过 / 17 文件；typecheck、build 通过 |
 | 定位 | 个人实验项目，**轻量优先** |
-| 技术基调 | Canvas 2D + TypeScript，**运行期 0 依赖** |
+| 技术基调 | Canvas 2D + TypeScript + Vite + Vitest，**运行期 0 依赖** |
 | 参考 | Mini Metro（Dinosaur Polo Club）的乘客寻路与"观察型系统"设计 |
+
+> 快速开始：`npm.cmd install` → `npm.cmd run dev`（Windows 下用 `npm.cmd`，`npm.ps1` 被执行策略禁用）。当前状态与后续计划见 [08 · 交接与进度](docs/08-handoff.md)。
 
 ## 设计原则（不可违背）
 
@@ -34,10 +37,11 @@
 | [05 · 数据模型](docs/05-data-model.md) | TypeScript 数据结构与接口定义 |
 | [06 · 路线图](docs/06-roadmap.md) | M0–M4 里程碑、MVP 范围、验收标准、不做清单 |
 | [07 · 参考与来源](docs/07-references.md) | 研究来源与我方借鉴点 |
+| [08 · 交接与进度](docs/08-handoff.md) | 当前状态、命令、未决项、下一步、新会话启动提示词 |
 
 ## 下一步
 
-从 [M0](docs/06-roadmap.md#m0--骨架半天) 开始：单文件 + 主循环 + 大楼剖面 + 电梯上下跑 + 可拖拽编辑停靠表。
+见 [08 · 交接与进度](docs/08-handoff.md) §8。优先级：关闭评审门禁 → M3（评分 / 存档回放）→ M4（事件 / 音效 / 多地图 / 移动端）。
 
 ## 命名
 
