@@ -7,15 +7,16 @@ import type { Phase, World } from './types';
 
 /** The world runs at 60 ticks/s (kept local: drawHud takes no config arg). */
 const TICK_HZ = 60;
-const FONT = '13px system-ui';
-const TITLE_FONT = '600 20px system-ui';
+const FONT = '12px system-ui';
+const TITLE_FONT = '600 17px system-ui';
 const TEXT = '#e8edf2';
 const MUTED = '#9aa7b4';
-const PANEL = 'rgba(20,26,34,0.82)';
-const DIM = 'rgba(0,0,0,0.55)';
-const PAD = 10;
-const INSET = 12;
-const LINE = 18;
+/** Light frosted panel: low opacity over the scene, thin and quiet. */
+const PANEL = 'rgba(13,17,22,0.55)';
+const DIM = 'rgba(6,9,12,0.5)';
+const PAD = 14;
+const INSET = 16;
+const LINE = 20;
 
 interface Label {
   text: string;
@@ -98,7 +99,7 @@ function drawStats(ctx: CanvasRenderingContext2D, world: World, paused: boolean)
   let textW = 0;
   for (const label of labels) textW = Math.max(textW, measure(ctx, label));
   ctx.fillStyle = PANEL;
-  roundRect(ctx, { x: INSET, y: INSET, w: textW + PAD * 2, h: totalAdvance(labels) + PAD * 2 - 4, radius: 8 });
+  roundRect(ctx, { x: INSET, y: INSET, w: textW + PAD * 2, h: totalAdvance(labels) + PAD * 2 - 6, radius: 10 });
   ctx.fill();
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
@@ -146,7 +147,7 @@ function drawUpgrade(ctx: CanvasRenderingContext2D, world: World): void {
   const x = (ctx.canvas.width - w) / 2;
   const y = (ctx.canvas.height - h) / 2;
   ctx.fillStyle = PANEL;
-  roundRect(ctx, { x, y, w, h, radius: 10 });
+  roundRect(ctx, { x, y, w, h, radius: 12 });
   ctx.fill();
   drawLabelsCentered(ctx, labels, y + PAD + labels[0].advance / 2);
   ctx.restore();

@@ -16,10 +16,13 @@ const ZONE_COLOR: Record<Zone, string> = {
   residential: '#7f8fa6',
 };
 
-const FONT = '12px system-ui';
+const FONT = '11px system-ui';
 const TEXT = '#e8edf2';
 const MUTED = '#7f8fa6';
 const BAR_MAX = 60;
+const BAR_H = 4;
+const MARK = 6;
+const MARK_GAP = 3;
 const MAX_WAITING_DRAWN = 40;
 /** Pressure bar ramp: green → amber → red. */
 const GREEN = [0x38, 0xb7, 0x64] as const;
@@ -70,25 +73,40 @@ export function draw(
   drawFloorBands(ctx, v, world);
   drawPressureBars(ctx, v, world);
   drawWaiting(ctx, v, world);
-  // Elevators: shaft line, stop markers, interpolated capsule, selection ring.
+  // Elevators: route track, stop ticks, interpolated car, selection ring.
   const top = plotTop(v);
   const bottom = plotBottom(v);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const e of world.elevators) {
     const x = elevatorX(v, e.id);
-    ctx.fillStyle = 'rgba(232,237,242,0.1)';
-    ctx.fillRect(x - 1, top, 2, bottom - top);
+    // Soft route track: the line's own color, low alpha, round caps.
+    ctx.save();
+    ctx.globalAlpha = 0.3;
+    ctx.strokeStyle = e.color;
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x, top + 3);
+    ctx.lineTo(x, bottom - 3);
+    ctx.stroke();
+    ctx.restore();
+    // Stop markers: small rounded ticks centered on the shaft.
     ctx.fillStyle = e.color;
-    for (const s of e.stops) ctx.fillRect(x - 4, floorToY(v, s) - 1, 8, 2);
+    for (const s of e.stops) {
+      roundRectPath(ctx, { x: x - 5, y: floorToY(v, s) - 1.5, w: 10, h: 3, radius: 1.5 });
+      ctx.fill();
+    }
     const y = floorToY(v, e.posPrev + (e.pos - e.posPrev) * a);
     ctx.fillStyle = e.color;
-    capsule(ctx, x, y);
+    roundRectPath(ctx, { x: x - 10, y: y - 13, w: 20, h: 26, radius: 9 });
+    ctx.fill();
     if (e.id === selectedElevator) {
-      ctx.strokeStyle = TEXT;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(x, y, 15, 17, 0, 0, Math.PI * 2);
+      // Thin, quiet selection ring — never a harsh outline.
+      ctx.strokeStyle = 'rgba(232,237,242,0.55)';
+      ctx.lineWidth = 1.5;
+      roundRectPath(ctx, { x: x - 13, y: y - 16, w: 26, h: 32, radius: 12 });
       ctx.stroke();
     }
     ctx.fillStyle = TEXT;
@@ -115,13 +133,14 @@ function drawBackground(ctx: CanvasRenderingContext2D, v: ViewConfig): void {
   g.addColorStop(1, '#0d1116');
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, v.width, v.height);
-  // Faint deterministic city silhouette in the left third.
+  // Static city silhouette in the left third — texture only, kept far below
+  // the building in contrast and height so it never competes with it.
   const third = v.width / 3;
   const base = plotBottom(v);
   const plotH = base - plotTop(v);
-  ctx.fillStyle = 'rgba(127,143,166,0.12)';
+  ctx.fillStyle = 'rgba(127,143,166,0.05)';
   for (const [fx, fw, hf] of SKYLINE) {
-    const bh = hf * plotH;
+    const bh = hf * plotH * 0.5;
     ctx.fillRect(fx * third, base - bh, fw * third, bh);
   }
 }
@@ -135,63 +154,73 @@ function drawFloorBands(ctx: CanvasRenderingContext2D, v: ViewConfig, world: Wor
     const isSky = f.special === 'skyLobby';
     const accent = isLobby || isSky;
     ctx.fillStyle = isLobby
-      ? 'rgba(224,176,46,0.6)'
+      ? 'rgba(224,176,46,0.45)'
       : isSky
-        ? 'rgba(46,134,228,0.55)'
-        : 'rgba(232,237,242,0.12)';
-    ctx.fillRect(12, y - (accent ? 1 : 0), v.width - 24, accent ? 2 : 1);
-    ctx.fillStyle = accent ? TEXT : MUTED;
-    ctx.fillText(f.name, 12, y - 9);
+        ? 'rgba(46,134,228,0.4)'
+        : 'rgba(232,237,242,0.08)';
+    ctx.fillRect(16, y - (accent ? 1 : 0), v.width - 32, accent ? 2 : 1);
+    // Floor labels: small, muted; accent floors only a touch brighter.
+    ctx.fillStyle = accent ? 'rgba(232,237,242,0.75)' : MUTED;
+    ctx.fillText(f.name, 16, y - 8);
   }
 }
 
 function drawPressureBars(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
-  const x0 = v.width - 16 - BAR_MAX;
-  ctx.fillStyle = 'rgba(232,237,242,0.08)';
-  for (const f of world.floors) ctx.fillRect(x0, floorToY(v, f.id) - 3, BAR_MAX, 6);
+  const x0 = v.width - 24 - BAR_MAX;
+  ctx.fillStyle = 'rgba(232,237,242,0.06)';
+  for (const f of world.floors) {
+    roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
+    ctx.fill();
+  }
   for (const f of world.floors) {
     if (f.pressure <= 0) continue;
     const p = f.pressure > 1 ? 1 : f.pressure;
     // Over-capacity floors pulse, phased by tick (deterministic).
     if (f.pressure >= 1) ctx.globalAlpha = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(world.tick * 0.15));
     ctx.fillStyle = pressureColor(p);
-    ctx.fillRect(x0, floorToY(v, f.id) - 3, p * BAR_MAX, 6);
+    roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: p * BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
+    ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
 
 function drawWaiting(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
-  const rightEdge = v.width - 16 - BAR_MAX - 4;
+  const rightEdge = v.width - 24 - BAR_MAX - 6;
   for (const f of world.floors) {
     const y = floorToY(v, f.id);
-    let x = elevatorX(v, world.elevators.length) + 10;
+    let x = elevatorX(v, world.elevators.length) + 12;
     const n = Math.min(f.waiting.length, MAX_WAITING_DRAWN);
     for (let i = 0; i < n; i++) {
       const p = world.passengers.get(f.waiting[i]);
       if (!p) continue;
       if (x > rightEdge) break;
-      const size = 2 + Math.max(1, p.group < 4 ? p.group : 4);
+      // Uniform zone-colored marker, sitting just above the floor line.
       ctx.fillStyle = ZONE_COLOR[p.destZone];
-      ctx.fillRect(x, y - size - 3, size, size);
-      x += size + 2;
+      roundRectPath(ctx, { x, y: y - MARK - 4, w: MARK, h: MARK, radius: 2 });
+      ctx.fill();
+      x += MARK + MARK_GAP;
     }
   }
 }
 
-/** Rounded capsule (elevator car): 20×26 with semicircular caps. */
-function capsule(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  const r = 10;
+/** Shared rounded-rect path (flat + restrained radii, Mini-Metro style). */
+function roundRectPath(
+  ctx: CanvasRenderingContext2D,
+  r: { x: number; y: number; w: number; h: number; radius: number },
+): void {
+  const { x, y, w, h, radius } = r;
+  const rad = Math.max(0, Math.min(radius, w / 2, h / 2));
   ctx.beginPath();
-  ctx.moveTo(x - r, y - 3);
-  ctx.arc(x, y - 3, r, Math.PI, 0);
-  ctx.lineTo(x + r, y + 3);
-  ctx.arc(x, y + 3, r, 0, Math.PI);
+  ctx.moveTo(x + rad, y);
+  ctx.arcTo(x + w, y, x + w, y + h, rad);
+  ctx.arcTo(x + w, y + h, x, y + h, rad);
+  ctx.arcTo(x, y + h, x, y, rad);
+  ctx.arcTo(x, y, x + w, y, rad);
   ctx.closePath();
-  ctx.fill();
 }
 
 function drawTransfers(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
-  ctx.strokeStyle = 'rgba(232,237,242,0.16)';
+  ctx.strokeStyle = 'rgba(232,237,242,0.1)';
   ctx.lineWidth = 1;
   for (const f of world.floors) {
     let minX = Infinity;
