@@ -28,8 +28,15 @@ const PHASE_SKY: Record<Phase, readonly [string, string]> = {
 };
 const BAR_MAX = 60;
 const BAR_H = 4;
-const MARK = 6;
-const MARK_GAP = 3;
+/** Destination badge: a ~12px zone-colored square carrying the floor number. */
+const BADGE = 12;
+const BADGE_GAP = 3;
+const BADGE_FONT = '9px system-ui';
+/** Dark ink reads ≥~4.9:1 on every zone color at this size. */
+const BADGE_INK = '#0d1117';
+const HOLLOW = 'rgba(232,237,242,0.45)';
+/** Faint neutral bar for floors an elevator passes without stopping. */
+const SKIP_COLOR = 'rgba(232,237,242,0.18)';
 const MAX_WAITING_DRAWN = 40;
 /** Pressure bar ramp: green → amber → red. */
 const GREEN = [0x38, 0xb7, 0x64] as const;
@@ -80,7 +87,7 @@ export function draw(
   drawFloorBands(ctx, v, world);
   drawPressureBars(ctx, v, world);
   drawWaiting(ctx, v, world);
-  // Elevators: route track, stop ticks, interpolated car, selection ring.
+  // Elevators: route track, stop rings / skip bars, interpolated car, selection.
   const top = plotTop(v);
   const bottom = plotBottom(v);
   ctx.textAlign = 'center';
@@ -99,11 +106,28 @@ export function draw(
     ctx.lineTo(x, bottom - 3);
     ctx.stroke();
     ctx.restore();
-    // Stop markers: small rounded ticks centered on the shaft.
-    ctx.fillStyle = e.color;
-    for (const s of e.stops) {
-      roundRectPath(ctx, { x: x - 5, y: floorToY(v, s) - 1.5, w: 10, h: 3, radius: 1.5 });
-      ctx.fill();
+    // Stop / skip language: a ring = the car stops here; a faint horizontal
+    // bar = the car passes through without stopping (express).
+    if (e.stops.length > 0) {
+      let lo = e.stops[0];
+      let hi = e.stops[0];
+      for (const s of e.stops) {
+        if (s < lo) lo = s;
+        if (s > hi) hi = s;
+      }
+      const stops = new Set(e.stops);
+      ctx.fillStyle = SKIP_COLOR;
+      for (const f of world.floors) {
+        if (f.id < lo || f.id > hi || stops.has(f.id)) continue;
+        ctx.fillRect(x - 4, floorToY(v, f.id) - 1, 8, 2);
+      }
+      ctx.strokeStyle = e.color;
+      ctx.lineWidth = 2;
+      for (const s of e.stops) {
+        ctx.beginPath();
+        ctx.arc(x, floorToY(v, s), 3.5, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
     const y = floorToY(v, e.posPrev + (e.pos - e.posPrev) * a);
     ctx.fillStyle = e.color;
@@ -194,6 +218,10 @@ function drawPressureBars(ctx: CanvasRenderingContext2D, v: ViewConfig, world: W
 
 function drawWaiting(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
   const rightEdge = v.width - 24 - BAR_MAX - 6;
+  ctx.save();
+  ctx.font = BADGE_FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   for (const f of world.floors) {
     const y = floorToY(v, f.id);
     let x = elevatorX(v, world.elevators.length) + 12;
@@ -201,14 +229,26 @@ function drawWaiting(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World)
     for (let i = 0; i < n; i++) {
       const p = world.passengers.get(f.waiting[i]);
       if (!p) continue;
-      if (x > rightEdge) break;
-      // Uniform zone-colored marker, sitting just above the floor line.
-      ctx.fillStyle = ZONE_COLOR[p.destZone];
-      roundRectPath(ctx, { x, y: y - MARK - 4, w: MARK, h: MARK, radius: 2 });
-      ctx.fill();
-      x += MARK + MARK_GAP;
+      if (x + BADGE > rightEdge) break;
+      // Destination badge: zone color + the final leg's alight floor number.
+      const dest = p.plan.length > 0 ? p.plan[p.plan.length - 1].alightFloor : null;
+      const top = y - 4 - BADGE;
+      roundRectPath(ctx, { x, y: top, w: BADGE, h: BADGE, radius: 3 });
+      if (dest === null) {
+        // Stranded / unreachable: hollow neutral badge, no number.
+        ctx.strokeStyle = HOLLOW;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = ZONE_COLOR[p.destZone];
+        ctx.fill();
+        ctx.fillStyle = BADGE_INK;
+        ctx.fillText(dest < 0 ? `B${-dest}` : String(dest), x + BADGE / 2, top + BADGE / 2);
+      }
+      x += BADGE + BADGE_GAP;
     }
   }
+  ctx.restore();
 }
 
 /** Shared rounded-rect path (flat + restrained radii, Mini-Metro style). */

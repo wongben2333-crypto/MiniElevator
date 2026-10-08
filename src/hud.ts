@@ -17,6 +17,10 @@ const DIM = 'rgba(6,9,12,0.5)';
 const PAD = 14;
 const INSET = 16;
 const LINE = 20;
+/** One-line onboarding legend for the stop / skip language. */
+const HINT = '圆圈停靠 · 横杠跳过 · 拖拽楼层改线 · 空格暂停';
+const HINT_FONT = '10px system-ui';
+const HINT_COLOR = 'rgba(154,167,180,0.45)';
 
 interface Label {
   text: string;
@@ -155,8 +159,20 @@ function drawUpgrade(ctx: CanvasRenderingContext2D, world: World): void {
   ctx.restore();
 }
 
+/** Muted bottom-left legend; drawn under the overlays so they dim it too. */
+function drawHint(ctx: CanvasRenderingContext2D): void {
+  ctx.save();
+  ctx.font = HINT_FONT;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'bottom';
+  ctx.fillStyle = HINT_COLOR;
+  ctx.fillText(HINT, INSET, ctx.canvas.height - 10);
+  ctx.restore();
+}
+
 export function drawHud(ctx: CanvasRenderingContext2D, world: World, paused: boolean): void {
   drawStats(ctx, world, paused);
+  drawHint(ctx);
   if (world.pendingUpgrade !== null) drawUpgrade(ctx, world);
   if (world.gameOver !== null) drawGameOver(ctx, world);
 }
