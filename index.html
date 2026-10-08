@@ -2,13 +2,18 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#f4f4ef" />
     <title>垂直都市 · Vertical Rush</title>
     <style>
       :root {
         color-scheme: light;
         --bg: #f4f4ef;
         --ink: #1f242b;
+        --stage-max: 460px;
       }
       * {
         margin: 0;
@@ -21,17 +26,38 @@
         background: var(--bg);
         color: var(--ink);
         overflow: hidden;
+        overscroll-behavior: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
         font-family: system-ui, -apple-system, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      }
+      #stage {
+        position: relative;
+        width: min(100vw, var(--stage-max));
+        height: 100vh;
+        height: 100dvh;
+        margin: 0 auto;
+        background: var(--bg);
+        color: var(--ink);
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
+        padding: env(safe-area-inset-top) env(safe-area-inset-right)
+          env(safe-area-inset-bottom) env(safe-area-inset-left);
       }
       #game {
         display: block;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
+        touch-action: none;
       }
     </style>
   </head>
   <body>
-    <canvas id="game"></canvas>
+    <div id="stage">
+      <canvas id="game"></canvas>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
