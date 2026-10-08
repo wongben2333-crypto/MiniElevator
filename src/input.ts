@@ -17,9 +17,9 @@ export interface InputHandlers {
 }
 
 const POLICIES: readonly Policy[] = ['SCAN', 'ZONE', 'UP_PEAK', 'DOWN_PEAK', 'ALL_CALL'];
-/** Half-extents of the car's tap target — generous so a finger hits it. */
-const CAR_HALF_W = 16;
-const CAR_HALF_H = 18;
+/** Half-extents of the car's tap target — matches the drawn car, generous for fingers. */
+const CAR_HALF_W = 18;
+const CAR_HALF_H = 26;
 
 function canvasPoint(canvas: HTMLCanvasElement, ev: PointerEvent): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();

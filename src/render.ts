@@ -3,7 +3,7 @@
 // lookups — everything derives from `world` and the pure view geometry.
 
 import { LOBBY_FLOOR } from './config';
-import type { Elevator, Phase, World, Zone } from './types';
+import type { Elevator, FloorId, Passenger, Phase, World, Zone } from './types';
 import { elevatorX, floorToY, plotBottom, plotTop, type ViewConfig } from './view';
 
 /** Passenger square color by destination zone. */
@@ -130,13 +130,19 @@ export function draw(
     }
     const y = floorToY(v, e.posPrev + (e.pos - e.posPrev) * a);
     ctx.fillStyle = e.color;
-    roundRectPath(ctx, { x: x - 10, y: y - 13, w: 20, h: 26, radius: 9 });
+    roundRectPath(ctx, { x: x - CAR_W / 2, y: y - CAR_H / 2, w: CAR_W, h: CAR_H, radius: CAR_R });
     ctx.fill();
     if (e.id === selectedElevator) {
       // Thin, quiet selection ring — never a harsh outline.
       ctx.strokeStyle = 'rgba(20,22,26,0.5)';
       ctx.lineWidth = 1.5;
-      roundRectPath(ctx, { x: x - 13, y: y - 16, w: 26, h: 32, radius: 12 });
+      roundRectPath(ctx, {
+        x: x - CAR_W / 2 - 3,
+        y: y - CAR_H / 2 - 3,
+        w: CAR_W + 6,
+        h: CAR_H + 6,
+        radius: CAR_R + 2,
+      });
       ctx.stroke();
     }
     drawRiders(ctx, world, e, x, y);
@@ -165,13 +171,26 @@ function readableInk(bg: string): string {
   return lum > 150 ? '#1a1d22' : '#ffffff';
 }
 
+/** The passenger's ultimate destination floor (final leg's alight floor), or null. */
+function destFloorOf(p: Passenger): FloorId | null {
+  return p.plan.length > 0 ? p.plan[p.plan.length - 1].alightFloor : null;
+}
+
+/** Elevator car: big enough to show each rider's destination badge. */
+const CAR_W = 34;
+const CAR_H = 50;
+const CAR_R = 13;
+/** Rider badges inside the car: 2-wide × 3-tall grid, then a `+N` for extras. */
 const RIDER_MAX = 6;
-const RIDER_FONT = '700 8px system-ui';
+const RIDER_BADGE = 11;
+const RIDER_GAP = 2;
+const RIDER_FONT = '8px system-ui';
 
 /**
- * Draw the passengers riding inside the car pill: up to 6 ~3px dots in a
- * 2-wide × 3-tall grid, each tinted by its destination zone. Overflow riders
- * collapse into a tiny `+N` under the grid. Empty car draws nothing.
+ * Draw the passengers riding inside the car: up to 6 destination badges (the
+ * same language as the platform — zone color + destination floor number) in a
+ * 2-wide × 3-tall grid. Extra riders collapse into a tiny `+N`. Empty car draws
+ * nothing.
  */
 function drawRiders(
   ctx: CanvasRenderingContext2D,
@@ -185,32 +204,36 @@ function drawRiders(
   const shown = n > RIDER_MAX ? RIDER_MAX : n;
   const overflow = n > shown;
   const rows = Math.ceil(shown / 2);
-  const rowGap = 6;
-  const colGap = 5;
-  const startY = cy + (rows - 1) * -rowGap * 0.5 - (overflow ? 2.5 : 0);
+  const step = RIDER_BADGE + RIDER_GAP;
+  const startY = cy - ((rows - 1) * step) / 2 + (overflow ? -5 : 0);
   ctx.save();
-  // A thin light ring keeps a dot legible even when its zone color matches the car.
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-  ctx.lineWidth = 0.75;
+  ctx.font = RIDER_FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
   for (let i = 0; i < shown; i++) {
     const p = world.passengers.get(e.load[i]);
-    if (!p) continue;
+    if (p === undefined) continue;
     const col = i % 2;
     const row = Math.floor(i / 2);
-    const x = cx + (col === 0 ? -colGap / 2 : colGap / 2);
-    const y = startY + row * rowGap;
-    ctx.fillStyle = ZONE_COLOR[p.destZone];
-    ctx.beginPath();
-    ctx.arc(x, y, 1.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    const bx = cx + (col === 0 ? -step / 2 : step / 2) - RIDER_BADGE / 2;
+    const by = startY + row * step - RIDER_BADGE / 2;
+    roundRectPath(ctx, { x: bx, y: by, w: RIDER_BADGE, h: RIDER_BADGE, radius: 3 });
+    const dest = destFloorOf(p);
+    if (dest === null) {
+      // No plan (unreachable): hollow badge, no number.
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = ZONE_COLOR[p.destZone];
+      ctx.fill();
+      ctx.fillStyle = BADGE_INK;
+      ctx.fillText(dest < 0 ? `B${-dest}` : String(dest), bx + RIDER_BADGE / 2, by + RIDER_BADGE / 2);
+    }
   }
   if (overflow) {
-    ctx.font = RIDER_FONT;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
     ctx.fillStyle = readableInk(e.color);
-    ctx.fillText(`+${n - shown}`, cx, cy + 8);
+    ctx.fillText(`+${n - shown}`, cx, cy + 19);
   }
   ctx.restore();
 }
@@ -288,7 +311,7 @@ function drawWaiting(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World)
       if (!p) continue;
       if (x + BADGE > rightEdge) break;
       // Destination badge: zone color + the final leg's alight floor number.
-      const dest = p.plan.length > 0 ? p.plan[p.plan.length - 1].alightFloor : null;
+      const dest = destFloorOf(p);
       const top = y - 4 - BADGE;
       roundRectPath(ctx, { x, y: top, w: BADGE, h: BADGE, radius: 3 });
       if (dest === null) {
