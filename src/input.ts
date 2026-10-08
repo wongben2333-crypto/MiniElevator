@@ -1,17 +1,33 @@
 // Pointer + keyboard input (browser layer):
 //   - tap a floor band on an elevator's lane -> toggle that floor in its stop list
 //   - tap an elevator car                    -> select it / cycle its policy
+//   - tap the bottom control bar             -> pause / 1x / 2x
+//   - tap an upgrade card while the day-end overlay is up -> pick that upgrade
 //   - Space                                  -> pause / resume
 //   - 1 / 2                                  -> pick a day-end upgrade
+//
+// While an overlay owns the screen (game over, day-end upgrade) board taps are
+// ignored so a stray touch cannot edit the network behind it.
 
 import { makeView } from './render';
 import type { Command, Policy, World } from './types';
-import { elevatorX, floorToY, hitTestElevator, hitTestFloor, toggleStop } from './view';
+import {
+  controlBarLayout,
+  elevatorX,
+  floorToY,
+  hitTestElevator,
+  hitTestFloor,
+  toggleStop,
+  upgradeOptionRects,
+  type Rect,
+} from './view';
 
 export interface InputHandlers {
   onCommand: (cmd: Command) => void;
   getPaused: () => boolean;
   setPaused: (paused: boolean) => void;
+  getSpeed: () => number;
+  setSpeed: (speed: 1 | 2) => void;
   getSelected: () => number;
   setSelected: (id: number) => void;
 }
@@ -24,6 +40,11 @@ const CAR_HALF_H = 26;
 function canvasPoint(canvas: HTMLCanvasElement, ev: PointerEvent): { x: number; y: number } {
   const rect = canvas.getBoundingClientRect();
   return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+}
+
+/** Inclusive point-in-rect test shared by the control bar and the upgrade cards. */
+function pointInRect(x: number, y: number, r: Rect): boolean {
+  return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
 }
 
 export function attachInput(
@@ -46,9 +67,49 @@ export function attachInput(
 
   const onPointerDown = (ev: PointerEvent): void => {
     const { x, y } = canvasPoint(canvas, ev);
+
+    // 0) Overlays own the screen: taps can never reach the board behind them.
+    if (world.gameOver !== null) return;
+
+    // The layout functions shared with the renderer work in logical CSS pixels;
+    // clientWidth is 0 only before first layout, so fall back to the backing store.
+    const logicalW = canvas.clientWidth > 0 ? canvas.clientWidth : canvas.width;
+    const logicalH = canvas.clientHeight > 0 ? canvas.clientHeight : canvas.height;
+
+    // 1) Day-end upgrade overlay: tap a card to pick it; everything else is inert.
+    const offers = world.pendingUpgrade;
+    if (offers !== null) {
+      const rects = upgradeOptionRects(logicalW, logicalH, offers.length);
+      for (const [i, rect] of rects.entries()) {
+        const offer = offers[i];
+        if (offer !== undefined && pointInRect(x, y, rect)) {
+          handlers.onCommand({ t: 'chooseUpgrade', tick: world.tick, kind: offer.kind });
+          break;
+        }
+      }
+      return;
+    }
+
+    // 2) Bottom control bar: pause + speed selector.
+    for (const button of controlBarLayout(logicalW, logicalH).buttons) {
+      if (!pointInRect(x, y, button.rect)) continue;
+      switch (button.id) {
+        case 'pause':
+          handlers.setPaused(!handlers.getPaused());
+          break;
+        case 'speed1':
+          handlers.setSpeed(1);
+          break;
+        case 'speed2':
+          handlers.setSpeed(2);
+          break;
+      }
+      return;
+    }
+
     const v = view();
 
-    // 1) Tap the car: select it; tapping the selected car cycles its policy.
+    // 3) Tap the car: select it; tapping the selected car cycles its policy.
     const car = hitCar(x, y);
     if (car !== null) {
       if (handlers.getSelected() === car) {
@@ -62,7 +123,7 @@ export function attachInput(
       return;
     }
 
-    // 2) Tap a floor band on a lane: toggle that floor's stop for that elevator.
+    // 4) Tap a floor band on a lane: toggle that floor's stop for that elevator.
     const lane = hitTestElevator(v, x, world.elevators.length);
     const floor = hitTestFloor(v, y);
     if (lane === null || floor === null) return;
