@@ -138,6 +138,8 @@ function drawUpgrade(ctx: CanvasRenderingContext2D, world: World): void {
   offers.forEach((offer, i) => {
     labels.push({ text: `${i + 1}. ${offer.label}`, font: FONT, color: TEXT, advance: 22 });
   });
+  const top = world.floors.reduce((m, f) => (f.id > m ? f.id : m), 0);
+  labels.push({ text: `楼高 ${top}F（记得把新层接入电梯）`, font: FONT, color: MUTED, advance: 22 });
   labels.push({ text: '按 1 / 2 选择', font: FONT, color: MUTED, advance: 22 });
 
   let textW = 0;

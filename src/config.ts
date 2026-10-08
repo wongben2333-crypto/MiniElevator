@@ -50,6 +50,21 @@ export const BUILDING: BuildingFloorSpec[] = [
 
 export const LOBBY_FLOOR: FloorId = 1;
 
+/** The building grows by one floor per day, up to this floor id. */
+export const MAX_FLOOR_ID: FloorId = 20;
+
+/**
+ * Spec for the floor added when the building grows (tenants move in). The zone is
+ * a deterministic function of the floor id; returns null once `MAX_FLOOR_ID` is hit.
+ * New floors are NOT auto-added to any elevator — the player connects them.
+ */
+export function growthFloor(id: FloorId): BuildingFloorSpec | null {
+  if (id > MAX_FLOOR_ID) return null;
+  const zone: Zone = id % 5 === 0 ? 'retail' : id % 3 === 0 ? 'residential' : 'office';
+  const capacity = zone === 'retail' ? 8 : zone === 'residential' ? 12 : 10;
+  return { id, name: `${id}F`, zone, capacity };
+}
+
 const LOW_COLOR = '#e4572e';
 const HIGH_COLOR = '#2e86e4';
 export const ELEVATOR_PALETTE = [
