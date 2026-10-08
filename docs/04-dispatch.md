@@ -27,7 +27,7 @@
 ```
 
 - `MOVING`：向 `targetFloor` 移动，逐帧更新 `pos`（浮点楼层）。
-- `DWELL`：开门，先卸后装（受容量与策略约束），持续 `DWELL_TIME`。
+- `DWELL`：开门，先卸后装（受容量与策略约束），开门时长 = 基准门时 + 上下客人数 × 每人耗时。
 - `IDLE`：无目标，等待新请求（按策略可能回到大堂/待命层）。
 
 ## 3. MVP 调度：SCAN / LOOK（扫楼）
@@ -101,7 +101,9 @@ function shouldStop(elev, floor, pending, phase): boolean {
 |---|---|---|
 | `CAPACITY` | 单轿厢载客数 | 8–16 |
 | `SPEED` | 层/秒 | 1–2 |
-| `DWELL_TIME` | 每站停靠秒数 | 2–4 |
+| `DWELL_TIME` | 基准开门秒数（再按上下客人数累加 `BOARD_TIME_PER_PERSON`） | 1–2 |
+| `ACCEL` | 加/减速度（层/秒²） | 3–6 |
+| `BOARD_TIME_PER_PERSON` | 每人上下客耗时（秒） | 0.3–0.5 |
 | `IDLE_FLOOR` | 待命/返程目标层 | 大堂(1F) |
 | `SKIP_COOLDOWN` | 满载跳过后冷却 | 0 |
 

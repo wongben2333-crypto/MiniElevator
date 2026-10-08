@@ -7,7 +7,7 @@
 
 ## 1. 一句话状态
 
-**可玩 MVP + M3 完成**：Canvas 2D + TypeScript + Vite + Vitest，运行期 0 依赖；`npm.cmd test` **117 项通过 / 21 文件**，`typecheck`、`build` 均通过；Playwright 手动 QA 已验证核心交互、失败/升级、评分、极简外观与每日加建楼层。
+**可玩 MVP + M3 完成**：Canvas 2D + TypeScript + Vite + Vitest，运行期 0 依赖；`npm.cmd test` **123 项通过 / 21 文件**，`typecheck`、`build` 均通过；Playwright 手动 QA 已验证核心交互、失败/升级、评分、浅色极简外观与轿厢乘客。
 
 **评审门禁已关闭**（本轮独立复核）：
 - BLOCKER-2「假一天测试」→ **PASS**：`integration_shipped.test.ts` 使用真实出厂配置（180s/天）。
@@ -51,17 +51,17 @@
 | **回放** | `src/replay.ts` | seed + 命令流：`ReplayLog` 序列化/校验 + `runReplay` 确定性重建（纯逻辑，内部 API） |
 | 渲染 | `src/render.ts` | Canvas 剖面：楼层/乘客/电梯/压力条/换乘连线（极简扁平，Mini Metro 向） |
 | HUD | `src/hud.ts` | 统计、评级/综合分、过载浮层（命名瓶颈层）、升级浮层 |
-| 输入 | `src/input.ts` | 选中电梯、拖拽改停靠表、切策略、空格暂停、`1/2` 选升级 |
+| 输入 | `src/input.ts` | 点按「电梯×楼层」切换停靠、点轿厢选中/切策略、空格暂停、`1/2` 选升级 |
 | 主循环 | `src/main.ts` | 固定步长（60Hz，追帧上限 5）+ 接线；`window.__verticalRush` QA 桥 |
 
 **架构铁律**：`src/*.ts` 除 `render/input/hud/main` 外**不得引用 DOM**（`tests/no_dom_import.test.ts` 强制守卫，自动覆盖 `score.ts`/`replay.ts`）。
 
 ## 4. 测试与验证现状
 
-- 测试文件 21 个，117 用例：rng / queries / route(BFS+A*) / dispatch / view / 5 个系统 / sim 编排 / **出厂配置三日存活 + 无孤立等待者** / **dispatch 终点饥馑回归** / **score 评分** / **replay 回放** / **sim 加建楼层** / 2 日集成 / DOM 纯净守卫 / 确定性。
+- 测试文件 21 个，123 用例：rng / queries / route(BFS+A*) / dispatch / view(命中+toggleStop) / 5 个系统(含 movement 加/减速与 boarding 门时) / sim 编排 / **出厂配置三日存活 + 无孤立等待者** / **dispatch 终点饥馑回归** / **score 评分** / **replay 回放** / **sim 加建楼层** / 2 日集成 / DOM 纯净守卫 / 确定性。
 - 手动 QA（Playwright，真实页面）已验证：
   - 送达、换乘（`transfers > 0`）；
-  - 拖拽改线：电梯 0 停靠 `[-1,1,2,3,4,5]` → `[-1,1,2,3,4,5,7,8,9,10]`；
+  - 点按格子切换停靠：电梯 0 停靠 `[-1,1,2,3,4,5]` → 点 4F 后 `[-1,1,2,3,5]`；
   - 到达第 2 天、升级浮层、`1/2` 选择生效；
   - 过载失败浮层正确命名瓶颈楼层；
   - 评分/星级：实时面板 `评级 ★★★`、过载浮层 `评价 ★★★ · 综合分 71 · 存活 3 天 · 送达 220 人`。
@@ -75,7 +75,8 @@
 - 调度：LOOK 扫楼——当前方向只要还有**任意**请求（不分上下）就继续前进，仅在严格前方无请求且本层有反向排队时调头；停靠方向在每次停靠**幂等**决定，不逐 tick 翻转。
 - 评分：星级 = 生存天数（1★/天，封顶 3★）；综合分 0..100（`src/score.ts`）。
 - 加建：每日日界顶部 +1 层（封顶 20F，`growthFloor` 确定性分区 office/retail/residential），**不自动接入电梯**，需玩家改线。
-- **外观**：极简扁平，对齐 Mini Metro（见 [01 §9](01-game-design.md)）；**不做音效/音频**。
+- 运动：电梯有加速度与到站减速（`accel`），开门时长随上下客人数（`dwellTime` + 人数×`boardTimePerPerson`）。
+- **外观**：极简扁平、**浅色纸张主题**，对齐 Mini Metro（见 [01 §9](01-game-design.md)）；**不做音效/音频**。
 - 乘客路径核心算法已获评审认可，勿过度改动。
 
 ## 6. 当前平衡参数（`src/config.ts`）
@@ -83,6 +84,7 @@
 - 电梯：低区 `[-1,1,2,3,4,5]`、高区 `[1,5,6,7,8,9,10]`；容量 10、速度 1.6 层/秒。
 - 出生率（人/秒）：晨 0.30 / 午 0.15 / 晚 0.30 / 夜 0.06；日增长 +15%/天。
 - 压力阈值 600 tick（10s）；一天 10800 tick（180s）。
+- 运动：加速度 4 层/秒²；开门时长 = 1.2s + 0.4s × 上下客人数。
 - 评分目标 `SCORE_TARGETS`：delivered 200 / wait 12s / energyPer 5.5 / transferRate 0.15。
 
 ## 7. 已知问题 / 未决项
@@ -137,7 +139,7 @@ Co-authored-by: Sisyphus <clio-agent@sisyphuslabs.ai>
 
 【当前状态】
 - 已完成 M0–M3（升级二选一、评分/星级、seed+命令流回放、每日加建楼层）；Canvas2D + TypeScript + Vite + Vitest；运行期 0 依赖。
-- `npm.cmd test` → 117 通过（21 文件）；`npm.cmd run typecheck`、`npm.cmd run build` 均通过。
+- `npm.cmd test` → 123 通过（21 文件）；`npm.cmd run typecheck`、`npm.cmd run build` 均通过。
 - 架构铁律：src/{sim,route,dispatch,view,systems,config,queries,rng,types,score,replay}.ts 不得引用 DOM（有守卫测试）。
 - 固定步长 60Hz；确定性随机；寻路从 passenger.atFloor 起算；调度为 LOOK 扫楼（当前方向有任意请求即不调头）。
 - 评审门禁已关闭（BLOCKER-1 已彻底修复 + 回归测试；BLOCKER-2 PASS）。

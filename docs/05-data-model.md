@@ -131,7 +131,9 @@ export type Command =
 export interface SimConfig {
   simHz: number;                // 60
   floorTravelBase: number;      // 秒/层（再/速度）
-  dwellTime: number;            // 停靠秒数
+  accel: number;                // 加/减速度（层/秒²）
+  dwellTime: number;            // 基准开门秒数
+  boardTimePerPerson: number;   // 每人上下客耗时（秒）
   transferPenalty: number;      // 换乘额外代价（秒）
   backtrackPenalty: number;     // 回头惩罚（秒）
   alightTime: number;

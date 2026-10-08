@@ -11,7 +11,7 @@
 | 项 | 状态 |
 |---|---|
 | 阶段 | **可玩 MVP + M3 完成**（M0–M3） |
-| 测试 | `npm.cmd test` 117 通过 / 21 文件；typecheck、build 通过 |
+| 测试 | `npm.cmd test` 123 通过 / 21 文件；typecheck、build 通过 |
 | 定位 | 个人实验项目，**轻量优先** |
 | 技术基调 | Canvas 2D + TypeScript + Vite + Vitest，**运行期 0 依赖** |
 | 参考 | Mini Metro（Dinosaur Polo Club）的乘客寻路与"观察型系统"设计 |
@@ -22,7 +22,7 @@
 
 **开发运行**：`npm.cmd install` → `npm.cmd run dev`（默认 http://localhost:5173）。也可 `npm.cmd run build` + `npm.cmd run preview`。
 
-**操作**：拖拽楼层 = 编辑所选电梯的停靠表；点击轿厢 = 选中 / 再点切换策略；空格 = 暂停；`1` / `2` = 选择每日升级。
+**操作**：点按「电梯 × 楼层」格子 = 切换该层是否停靠；点轿厢 = 选中 / 再点切换策略；空格 = 暂停；`1` / `2` = 选择每日升级。
 
 > Windows 下一律用 `npm.cmd` / `npx.cmd`（`npm.ps1` 被执行策略禁用）。可用 `?seed=3` 指定随机种子。当前状态见 [08 · 交接与进度](docs/08-handoff.md)。
 
