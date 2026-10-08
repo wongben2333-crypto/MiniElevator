@@ -1,9 +1,9 @@
-// Canvas 2D drawing layer for the building cross-section (dark, minimal,
+// Canvas 2D drawing layer for the building cross-section (light paper,
 // Mini-Metro-like). Deterministic only: no randomness, no clocks, no DOM
 // lookups — everything derives from `world` and the pure view geometry.
 
 import { LOBBY_FLOOR } from './config';
-import type { Phase, World, Zone } from './types';
+import type { Elevator, Phase, World, Zone } from './types';
 import { elevatorX, floorToY, plotBottom, plotTop, type ViewConfig } from './view';
 
 /** Passenger square color by destination zone. */
@@ -17,14 +17,13 @@ const ZONE_COLOR: Record<Zone, string> = {
 };
 
 const FONT = '11px system-ui';
-const TEXT = '#e8edf2';
-const MUTED = '#7f8fa6';
-/** Background gradient [top, bottom] per phase — warm dawn, cool deep night. */
+const MUTED = '#6b7280';
+/** Background gradient [top, bottom] per phase — near-white paper tints. */
 const PHASE_SKY: Record<Phase, readonly [string, string]> = {
-  morning: ['#1b2330', '#0e131b'],
-  midday: ['#182028', '#0d1218'],
-  evening: ['#241a20', '#130d11'],
-  night: ['#0d1522', '#070a10'],
+  morning: ['#f7f4ec', '#f2efe6'],
+  midday: ['#f7f7f2', '#f1f1ec'],
+  evening: ['#f8f0e6', '#f3e9de'],
+  night: ['#eef1f5', '#e7ebf1'],
 };
 const BAR_MAX = 60;
 const BAR_H = 4;
@@ -33,10 +32,10 @@ const BADGE = 12;
 const BADGE_GAP = 3;
 const BADGE_FONT = '9px system-ui';
 /** Dark ink reads ≥~4.9:1 on every zone color at this size. */
-const BADGE_INK = '#0d1117';
-const HOLLOW = 'rgba(232,237,242,0.45)';
+const BADGE_INK = '#1a1d22';
+const HOLLOW = 'rgba(40,44,52,0.4)';
 /** Faint neutral bar for floors an elevator passes without stopping. */
-const SKIP_COLOR = 'rgba(232,237,242,0.18)';
+const SKIP_COLOR = 'rgba(40,44,52,0.18)';
 const MAX_WAITING_DRAWN = 40;
 /** Pressure bar ramp: green → amber → red. */
 const GREEN = [0x38, 0xb7, 0x64] as const;
@@ -96,7 +95,7 @@ export function draw(
     const x = elevatorX(v, e.id);
     // Soft route track: the line's own color, low alpha, round caps.
     ctx.save();
-    ctx.globalAlpha = 0.3;
+    ctx.globalAlpha = 0.35;
     ctx.strokeStyle = e.color;
     ctx.lineWidth = 5;
     ctx.lineCap = 'round';
@@ -135,13 +134,12 @@ export function draw(
     ctx.fill();
     if (e.id === selectedElevator) {
       // Thin, quiet selection ring — never a harsh outline.
-      ctx.strokeStyle = 'rgba(232,237,242,0.55)';
+      ctx.strokeStyle = 'rgba(20,22,26,0.5)';
       ctx.lineWidth = 1.5;
       roundRectPath(ctx, { x: x - 13, y: y - 16, w: 26, h: 32, radius: 12 });
       ctx.stroke();
     }
-    ctx.fillStyle = TEXT;
-    ctx.fillText(String(e.load.length), x, y);
+    drawRiders(ctx, world, e, x, y);
   }
   drawTransfers(ctx, v, world);
 }
@@ -158,6 +156,65 @@ function pressureColor(p: number): string {
   return q < 0.5 ? mix(GREEN, AMBER, q * 2) : mix(AMBER, RED, q * 2 - 1);
 }
 
+/** Ink (dark or white) that stays legible on top of `bg`. */
+function readableInk(bg: string): string {
+  const hex = /^#([0-9a-f]{6})$/i.exec(bg.trim());
+  if (hex === null) return '#ffffff';
+  const n = parseInt(hex[1], 16);
+  const lum = 0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255);
+  return lum > 150 ? '#1a1d22' : '#ffffff';
+}
+
+const RIDER_MAX = 6;
+const RIDER_FONT = '700 8px system-ui';
+
+/**
+ * Draw the passengers riding inside the car pill: up to 6 ~3px dots in a
+ * 2-wide × 3-tall grid, each tinted by its destination zone. Overflow riders
+ * collapse into a tiny `+N` under the grid. Empty car draws nothing.
+ */
+function drawRiders(
+  ctx: CanvasRenderingContext2D,
+  world: World,
+  e: Elevator,
+  cx: number,
+  cy: number,
+): void {
+  const n = e.load.length;
+  if (n === 0) return;
+  const shown = n > RIDER_MAX ? RIDER_MAX : n;
+  const overflow = n > shown;
+  const rows = Math.ceil(shown / 2);
+  const rowGap = 6;
+  const colGap = 5;
+  const startY = cy + (rows - 1) * -rowGap * 0.5 - (overflow ? 2.5 : 0);
+  ctx.save();
+  // A thin light ring keeps a dot legible even when its zone color matches the car.
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+  ctx.lineWidth = 0.75;
+  for (let i = 0; i < shown; i++) {
+    const p = world.passengers.get(e.load[i]);
+    if (!p) continue;
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const x = cx + (col === 0 ? -colGap / 2 : colGap / 2);
+    const y = startY + row * rowGap;
+    ctx.fillStyle = ZONE_COLOR[p.destZone];
+    ctx.beginPath();
+    ctx.arc(x, y, 1.6, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+  if (overflow) {
+    ctx.font = RIDER_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = readableInk(e.color);
+    ctx.fillText(`+${n - shown}`, cx, cy + 8);
+  }
+  ctx.restore();
+}
+
 function drawBackground(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
   const [top, bottom] = PHASE_SKY[world.phase];
   const g = ctx.createLinearGradient(0, 0, 0, v.height);
@@ -170,7 +227,7 @@ function drawBackground(ctx: CanvasRenderingContext2D, v: ViewConfig, world: Wor
   const third = v.width / 3;
   const base = plotBottom(v);
   const plotH = base - plotTop(v);
-  ctx.fillStyle = 'rgba(127,143,166,0.05)';
+  ctx.fillStyle = 'rgba(40,44,52,0.06)';
   for (const [fx, fw, hf] of SKYLINE) {
     const bh = hf * plotH * 0.5;
     ctx.fillRect(fx * third, base - bh, fw * third, bh);
@@ -186,20 +243,20 @@ function drawFloorBands(ctx: CanvasRenderingContext2D, v: ViewConfig, world: Wor
     const isSky = f.special === 'skyLobby';
     const accent = isLobby || isSky;
     ctx.fillStyle = isLobby
-      ? 'rgba(224,176,46,0.45)'
+      ? 'rgba(224,176,46,0.5)'
       : isSky
-        ? 'rgba(46,134,228,0.4)'
-        : 'rgba(232,237,242,0.08)';
+        ? 'rgba(46,134,228,0.5)'
+        : 'rgba(40,44,52,0.14)';
     ctx.fillRect(16, y - (accent ? 1 : 0), v.width - 32, accent ? 2 : 1);
-    // Floor labels: small, muted; accent floors only a touch brighter.
-    ctx.fillStyle = accent ? 'rgba(232,237,242,0.75)' : MUTED;
+    // Floor labels: small, muted; accent floors only a touch darker.
+    ctx.fillStyle = accent ? '#4b5563' : MUTED;
     ctx.fillText(f.name, 16, y - 8);
   }
 }
 
 function drawPressureBars(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
   const x0 = v.width - 24 - BAR_MAX;
-  ctx.fillStyle = 'rgba(232,237,242,0.06)';
+  ctx.fillStyle = 'rgba(40,44,52,0.08)';
   for (const f of world.floors) {
     roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
     ctx.fill();
@@ -268,7 +325,7 @@ function roundRectPath(
 }
 
 function drawTransfers(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
-  ctx.strokeStyle = 'rgba(232,237,242,0.1)';
+  ctx.strokeStyle = 'rgba(40,44,52,0.12)';
   ctx.lineWidth = 1;
   for (const f of world.floors) {
     let minX = Infinity;

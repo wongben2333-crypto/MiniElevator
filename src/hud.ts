@@ -9,18 +9,18 @@ import type { Phase, World } from './types';
 const TICK_HZ = 60;
 const FONT = '12px system-ui';
 const TITLE_FONT = '600 17px system-ui';
-const TEXT = '#e8edf2';
-const MUTED = '#9aa7b4';
-/** Light frosted panel: low opacity over the scene, thin and quiet. */
-const PANEL = 'rgba(13,17,22,0.55)';
-const DIM = 'rgba(6,9,12,0.5)';
+const TEXT = '#1f242b';
+const MUTED = '#6b7280';
+/** Light frosted panel: translucent white over the scene, thin and quiet. */
+const PANEL = 'rgba(255,255,255,0.82)';
+const DIM = 'rgba(255,255,255,0.62)';
 const PAD = 14;
 const INSET = 16;
 const LINE = 20;
 /** One-line onboarding legend for the stop / skip language. */
-const HINT = '圆圈停靠 · 横杠跳过 · 拖拽楼层改线 · 空格暂停';
+const HINT = '圆圈停靠 · 横杠跳过 · 点按格子切换停靠 · 空格暂停';
 const HINT_FONT = '10px system-ui';
-const HINT_COLOR = 'rgba(154,167,180,0.45)';
+const HINT_COLOR = 'rgba(107,114,128,0.7)';
 
 interface Label {
   text: string;
