@@ -3,7 +3,7 @@
 // lookups — everything derives from `world` and the pure view geometry.
 
 import { LOBBY_FLOOR } from './config';
-import type { World, Zone } from './types';
+import type { Phase, World, Zone } from './types';
 import { elevatorX, floorToY, plotBottom, plotTop, type ViewConfig } from './view';
 
 /** Passenger square color by destination zone. */
@@ -19,6 +19,13 @@ const ZONE_COLOR: Record<Zone, string> = {
 const FONT = '11px system-ui';
 const TEXT = '#e8edf2';
 const MUTED = '#7f8fa6';
+/** Background gradient [top, bottom] per phase — warm dawn, cool deep night. */
+const PHASE_SKY: Record<Phase, readonly [string, string]> = {
+  morning: ['#1b2330', '#0e131b'],
+  midday: ['#182028', '#0d1218'],
+  evening: ['#241a20', '#130d11'],
+  night: ['#0d1522', '#070a10'],
+};
 const BAR_MAX = 60;
 const BAR_H = 4;
 const MARK = 6;
@@ -69,7 +76,7 @@ export function draw(
   const v = makeView(ctx.canvas.width, ctx.canvas.height, world);
   const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
   ctx.font = FONT;
-  drawBackground(ctx, v);
+  drawBackground(ctx, v, world);
   drawFloorBands(ctx, v, world);
   drawPressureBars(ctx, v, world);
   drawWaiting(ctx, v, world);
@@ -127,10 +134,11 @@ function pressureColor(p: number): string {
   return q < 0.5 ? mix(GREEN, AMBER, q * 2) : mix(AMBER, RED, q * 2 - 1);
 }
 
-function drawBackground(ctx: CanvasRenderingContext2D, v: ViewConfig): void {
+function drawBackground(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
+  const [top, bottom] = PHASE_SKY[world.phase];
   const g = ctx.createLinearGradient(0, 0, 0, v.height);
-  g.addColorStop(0, '#161c25');
-  g.addColorStop(1, '#0d1116');
+  g.addColorStop(0, top);
+  g.addColorStop(1, bottom);
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, v.width, v.height);
   // Static city silhouette in the left third — texture only, kept far below
