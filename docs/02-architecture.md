@@ -107,6 +107,7 @@ src/
   config.ts   // 楼层/电梯/需求/平衡参数（TS 对象）
   rng.ts      // mulberry32
 tests/        // （可选）vitest 或 node 跑分脚本
+scripts/      // build-demo.mjs：把 dist 的 JS 内联为单文件试玩版（demo/，构建产物）
 ```
 
 > M0 可合并为 `index.html` + `game.js` 单文件；结构稳定后再拆分。

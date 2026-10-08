@@ -16,7 +16,15 @@
 | 技术基调 | Canvas 2D + TypeScript + Vite + Vitest，**运行期 0 依赖** |
 | 参考 | Mini Metro（Dinosaur Polo Club）的乘客寻路与"观察型系统"设计 |
 
-> 快速开始：`npm.cmd install` → `npm.cmd run dev`（Windows 下用 `npm.cmd`，`npm.ps1` 被执行策略禁用）。当前状态与后续计划见 [08 · 交接与进度](docs/08-handoff.md)。
+## 试玩 / 运行
+
+**试玩版（单文件，双击即玩）**：`npm.cmd run build:demo` → 生成 `demo/vertical-rush.html`，直接用浏览器打开即可（已内联全部 JS/CSS，无需服务器）。
+
+**开发运行**：`npm.cmd install` → `npm.cmd run dev`（默认 http://localhost:5173）。也可 `npm.cmd run build` + `npm.cmd run preview`。
+
+**操作**：拖拽楼层 = 编辑所选电梯的停靠表；点击轿厢 = 选中 / 再点切换策略；空格 = 暂停；`1` / `2` = 选择每日升级。
+
+> Windows 下一律用 `npm.cmd` / `npx.cmd`（`npm.ps1` 被执行策略禁用）。可用 `?seed=3` 指定随机种子。当前状态见 [08 · 交接与进度](docs/08-handoff.md)。
 
 ## 设计原则（不可违背）
 

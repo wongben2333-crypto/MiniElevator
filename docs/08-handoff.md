@@ -27,6 +27,8 @@
 | `npm.cmd test -- <filter>` | 只跑匹配文件 |
 | `npm.cmd run typecheck` | `tsc --noEmit` |
 | `npm.cmd run build` | 生产构建到 `dist/` |
+| `npm.cmd run build:demo` | 构建并生成单文件试玩版 `demo/vertical-rush.html`（双击即玩） |
+| `npm.cmd run preview` | 本地预览 `dist/` 生产构建 |
 
 ## 3. 已实现范围（M0–M3）
 
