@@ -1,10 +1,24 @@
 // Canvas 2D drawing layer for the building cross-section (light paper,
 // Mini-Metro-like). Deterministic only: no randomness, no clocks, no DOM
 // lookups — everything derives from `world` and the pure view geometry.
+// allow: SIZE_OK — this file owns exactly one thing (one frame of the
+// cross-section) as an indivisible drawing pipeline; splitting it is outside
+// this task's edit-only-render.ts scope.
 
 import { LOBBY_FLOOR } from './config';
 import type { Elevator, FloorId, Passenger, Phase, World, Zone } from './types';
-import { elevatorX, floorToY, plotBottom, plotTop, type ViewConfig } from './view';
+import {
+  PRESSURE_BAR_MAX,
+  PRESSURE_BAR_RIGHT_INSET,
+  PORTRAIT_LEFT_GUTTER,
+  elevatorX,
+  floorToY,
+  plotBottom,
+  plotTop,
+  portraitLayout,
+  stopExtent,
+  type ViewConfig,
+} from './view';
 
 /** Passenger square color by destination zone. */
 const ZONE_COLOR: Record<Zone, string> = {
@@ -25,8 +39,13 @@ const PHASE_SKY: Record<Phase, readonly [string, string]> = {
   evening: ['#f8f0e6', '#f3e9de'],
   night: ['#eef1f5', '#e7ebf1'],
 };
-const BAR_MAX = 60;
 const BAR_H = 4;
+// Portrait gutters (logical px): floor labels start at LABEL_X inside the left
+// gutter; the pressure-bar column geometry is shared with view.ts (single source
+// of truth) so render and portraitLayout agree on the whole-car safe band.
+const LABEL_X = 16;
+/** Breathing room between a floor label and the left gutter's edge. */
+const LABEL_GAP = 6;
 /** Destination badge: a ~12px zone-colored square carrying the floor number. */
 const BADGE = 12;
 const BADGE_GAP = 3;
@@ -49,6 +68,17 @@ const SKYLINE: readonly (readonly [number, number, number])[] = [
   [0.78, 0.05, 0.36], [0.85, 0.07, 0.55], [0.94, 0.05, 0.4],
 ];
 
+/**
+ * Logical (CSS-px) canvas size. The backing store may be scaled by
+ * devicePixelRatio, so layout reads clientWidth/clientHeight and falls back
+ * to the bitmap size when the canvas is not attached to the DOM.
+ */
+function logicalSize(ctx: CanvasRenderingContext2D): { width: number; height: number } {
+  const width = ctx.canvas.clientWidth || ctx.canvas.width;
+  const height = ctx.canvas.clientHeight || ctx.canvas.height;
+  return { width, height };
+}
+
 /** Build the cross-section layout for the current building + canvas size. */
 export function makeView(width: number, height: number, world: World): ViewConfig {
   let minFloor = 0;
@@ -60,15 +90,20 @@ export function makeView(width: number, height: number, world: World): ViewConfi
       if (f.id > maxFloor) maxFloor = f.id;
     }
   }
+  const { marginTop, marginBottom, shaftFirstX, shaftGapX } = portraitLayout(
+    width,
+    height,
+    world.elevators.length,
+  );
   return {
     width,
     height,
     minFloor,
     maxFloor,
-    marginTop: 70,
-    marginBottom: 40,
-    shaftFirstX: width * 0.55,
-    shaftGapX: 46,
+    marginTop,
+    marginBottom,
+    shaftFirstX,
+    shaftGapX,
   };
 }
 
@@ -79,7 +114,8 @@ export function draw(
   alpha: number,
   selectedElevator: number = -1,
 ): void {
-  const v = makeView(ctx.canvas.width, ctx.canvas.height, world);
+  const { width, height } = logicalSize(ctx);
+  const v = makeView(width, height, world);
   const a = alpha < 0 ? 0 : alpha > 1 ? 1 : alpha;
   ctx.font = FONT;
   drawBackground(ctx, v, world);
@@ -87,33 +123,32 @@ export function draw(
   drawPressureBars(ctx, v, world);
   drawWaiting(ctx, v, world);
   // Elevators: route track, stop rings / skip bars, interpolated car, selection.
-  const top = plotTop(v);
-  const bottom = plotBottom(v);
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const e of world.elevators) {
     const x = elevatorX(v, e.id);
-    // Soft route track: the line's own color, low alpha, round caps.
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.strokeStyle = e.color;
-    ctx.lineWidth = 5;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.beginPath();
-    ctx.moveTo(x, top + 3);
-    ctx.lineTo(x, bottom - 3);
-    ctx.stroke();
-    ctx.restore();
-    // Stop / skip language: a ring = the car stops here; a faint horizontal
-    // bar = the car passes through without stopping (express).
-    if (e.stops.length > 0) {
-      let lo = e.stops[0];
-      let hi = e.stops[0];
-      for (const s of e.stops) {
-        if (s < lo) lo = s;
-        if (s > hi) hi = s;
-      }
+    const extent = stopExtent(e.stops);
+    if (extent !== null) {
+      const { lo, hi } = extent;
+      // Route track: the line's own color, low alpha, round caps — drawn only
+      // across the elevator's own reach (y = floorToY(hi) .. floorToY(lo)),
+      // inset by 2px so the round cap never crosses the extreme stop rings.
+      const yTop = floorToY(v, hi);
+      const yBot = floorToY(v, lo);
+      ctx.save();
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = e.color;
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x, yTop + 2);
+      ctx.lineTo(x, yBot - 2);
+      ctx.stroke();
+      ctx.restore();
+      // Stop / skip language: a ring = the car stops here; a faint horizontal
+      // bar = the car passes through without stopping (express). Skip bars live
+      // only inside the stop extent; rings only at the real stops.
       const stops = new Set(e.stops);
       ctx.fillStyle = SKIP_COLOR;
       for (const f of world.floors) {
@@ -260,6 +295,8 @@ function drawBackground(ctx: CanvasRenderingContext2D, v: ViewConfig, world: Wor
 function drawFloorBands(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
+  // Label budget: start at LABEL_X and never cross into the left gutter.
+  const labelMaxW = PORTRAIT_LEFT_GUTTER - LABEL_X - LABEL_GAP;
   for (const f of world.floors) {
     const y = floorToY(v, f.id);
     const isLobby = f.special === 'lobby' || f.id === LOBBY_FLOOR;
@@ -270,18 +307,39 @@ function drawFloorBands(ctx: CanvasRenderingContext2D, v: ViewConfig, world: Wor
       : isSky
         ? 'rgba(46,134,228,0.5)'
         : 'rgba(40,44,52,0.14)';
-    ctx.fillRect(16, y - (accent ? 1 : 0), v.width - 32, accent ? 2 : 1);
-    // Floor labels: small, muted; accent floors only a touch darker.
+    ctx.fillRect(LABEL_X, y - (accent ? 1 : 0), v.width - 2 * LABEL_X, accent ? 2 : 1);
+    // Floor labels: small, muted; accent floors only a touch darker. Long
+    // names ("10F 屋顶酒吧") ellipsize so they never reach the first shaft.
     ctx.fillStyle = accent ? '#4b5563' : MUTED;
-    ctx.fillText(f.name, 16, y - 8);
+    ctx.fillText(ellipsizeLabel(ctx, f.name, labelMaxW), LABEL_X, y - 8);
   }
 }
 
+/**
+ * Longest prefix of `text` whose width plus a trailing `…` fits `maxWidth`,
+ * measured with the canvas's current font. Returns `…` if even one character
+ * is too wide. Deterministic: depends only on the text and font metrics.
+ */
+function ellipsizeLabel(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let lo = 0;
+  let hi = text.length;
+  // Binary search for the last prefix that fits (widths grow with length).
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    const w = ctx.measureText(`${text.slice(0, mid)}…`).width;
+    if (w <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo === 0 ? '…' : `${text.slice(0, lo)}…`;
+}
+
 function drawPressureBars(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
-  const x0 = v.width - 24 - BAR_MAX;
+  // Right-aligned column: PRESSURE_BAR_MAX wide, inset from the right edge.
+  const x0 = v.width - PRESSURE_BAR_RIGHT_INSET - PRESSURE_BAR_MAX;
   ctx.fillStyle = 'rgba(40,44,52,0.08)';
   for (const f of world.floors) {
-    roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
+    roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: PRESSURE_BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
     ctx.fill();
   }
   for (const f of world.floors) {
@@ -290,21 +348,25 @@ function drawPressureBars(ctx: CanvasRenderingContext2D, v: ViewConfig, world: W
     // Over-capacity floors pulse, phased by tick (deterministic).
     if (f.pressure >= 1) ctx.globalAlpha = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin(world.tick * 0.15));
     ctx.fillStyle = pressureColor(p);
-    roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: p * BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
+    roundRectPath(ctx, { x: x0, y: floorToY(v, f.id) - BAR_H / 2, w: p * PRESSURE_BAR_MAX, h: BAR_H, radius: BAR_H / 2 });
     ctx.fill();
     ctx.globalAlpha = 1;
   }
 }
 
 function drawWaiting(ctx: CanvasRenderingContext2D, v: ViewConfig, world: World): void {
-  const rightEdge = v.width - 24 - BAR_MAX - 6;
+  // Badges flow just right of the last car and stop before the pressure-bar
+  // column (portraitLayout reserves a strip so this always has room).
+  const rightEdge = v.width - PRESSURE_BAR_RIGHT_INSET - PRESSURE_BAR_MAX - 6;
+  const lastShaft = world.elevators.length - 1;
+  const startX = lastShaft >= 0 ? elevatorX(v, lastShaft) + CAR_W / 2 + 6 : PORTRAIT_LEFT_GUTTER;
   ctx.save();
   ctx.font = BADGE_FONT;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (const f of world.floors) {
     const y = floorToY(v, f.id);
-    let x = elevatorX(v, world.elevators.length) + 12;
+    let x = startX;
     const n = Math.min(f.waiting.length, MAX_WAITING_DRAWN);
     for (let i = 0; i < n; i++) {
       const p = world.passengers.get(f.waiting[i]);
