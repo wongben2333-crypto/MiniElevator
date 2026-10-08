@@ -10,6 +10,7 @@ import {
   insertionIndexForStops,
   plotBottom,
   plotTop,
+  toggleStop,
   yToFloor,
 } from '../src/view';
 
@@ -137,6 +138,21 @@ describe('view geometry', () => {
 
     it('inserts after equal stops to keep the list ascending', () => {
       expect(insertionIndexForStops([2, 5, 5, 9], 5)).toBe(3);
+    });
+  });
+
+  describe('toggleStop', () => {
+    it('adds a missing floor in ascending order', () => {
+      expect(toggleStop([1, 5], 3)).toEqual([1, 3, 5]);
+    });
+
+    it('removes an existing floor', () => {
+      expect(toggleStop([1, 3, 5], 3)).toEqual([1, 5]);
+    });
+
+    it('refuses to drop below two stops', () => {
+      expect(toggleStop([1, 2], 1)).toBeNull();
+      expect(toggleStop([1, 2], 2)).toBeNull();
     });
   });
 });

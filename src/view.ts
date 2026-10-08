@@ -84,3 +84,14 @@ export function insertionIndexForStops(currentStops: FloorId[], dropFloor: Floor
   while (i < currentStops.length && currentStops[i] <= dropFloor) i++;
   return i;
 }
+
+/**
+ * Toggle `floor` in a stop list (tap-to-edit). Returns the new ascending list, or
+ * null when removing would leave fewer than two stops (an elevator needs endpoints).
+ */
+export function toggleStop(currentStops: FloorId[], floor: FloorId): FloorId[] | null {
+  const next = currentStops.includes(floor)
+    ? currentStops.filter((s) => s !== floor)
+    : [...currentStops, floor].sort((a, b) => a - b);
+  return next.length >= 2 ? next : null;
+}
