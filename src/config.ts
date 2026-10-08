@@ -2,6 +2,7 @@
 
 import type {
   ElevatorSpec,
+  Floor,
   FloorId,
   Phase,
   SimConfig,
@@ -22,7 +23,7 @@ export const DEFAULT_CONFIG: SimConfig = {
   pressureThresholdTicks: 600,
   transferThreshold: 3,
   maxSpeed: 2,
-  dayLengthTicks: 10800, // 180s at 60Hz
+  dayLengthTicks: 7200, // 120s at 60Hz
   phaseCuts: [0.35, 0.6, 0.85],
   passengerCap: 300,
   routeMode: 'astar',
@@ -37,23 +38,26 @@ export interface BuildingFloorSpec {
 }
 
 export const BUILDING: BuildingFloorSpec[] = [
-  { id: -1, name: 'B1', zone: 'special', special: 'parking', capacity: 12 },
-  { id: 1, name: '1F', zone: 'lobby', special: 'lobby', capacity: 20 },
+  { id: -1, name: 'B1 停车场', zone: 'special', special: 'parking', capacity: 12 },
+  { id: 1, name: '1F 大堂', zone: 'lobby', special: 'lobby', capacity: 20 },
   { id: 2, name: '2F', zone: 'office', capacity: 10 },
   { id: 3, name: '3F', zone: 'office', capacity: 10 },
   { id: 4, name: '4F', zone: 'office', capacity: 10 },
-  { id: 5, name: '5F', zone: 'office', special: 'skyLobby', capacity: 14 },
+  { id: 5, name: '5F 空中大堂', zone: 'office', special: 'skyLobby', capacity: 14 },
   { id: 6, name: '6F', zone: 'office', capacity: 10 },
   { id: 7, name: '7F', zone: 'office', capacity: 10 },
   { id: 8, name: '8F', zone: 'office', capacity: 10 },
-  { id: 9, name: '9F', zone: 'retail', special: 'restaurant', capacity: 8 },
-  { id: 10, name: '10F', zone: 'special', special: 'skybar', capacity: 8 },
+  { id: 9, name: '9F 餐厅', zone: 'retail', special: 'restaurant', capacity: 8 },
+  { id: 10, name: '10F 屋顶酒吧', zone: 'special', special: 'skybar', capacity: 8 },
 ];
 
 export const LOBBY_FLOOR: FloorId = 1;
 
 /** The building grows by one floor per day, up to this floor id. */
 export const MAX_FLOOR_ID: FloorId = 20;
+
+/** Maximum number of elevators the building can run (day-end upgrades stop adding). */
+export const MAX_ELEVATORS = 5;
 
 /**
  * Spec for the floor added when the building grows (tenants move in). The zone is
@@ -108,6 +112,42 @@ export const SPAWN_PER_SECOND: Record<Phase, number> = {
   evening: 0.3,
   night: 0.06,
 };
+
+/** Relative spawn pull per zone, keyed by `Floor.zone`. */
+const ZONE_SPAWN_WEIGHTS: Record<Zone, { origin: number; dest: number }> = {
+  office: { origin: 1.0, dest: 1.0 },
+  residential: { origin: 1.1, dest: 1.1 },
+  retail: { origin: 1.1, dest: 1.4 },
+  lobby: { origin: 2.0, dest: 2.0 },
+  special: { origin: 1.5, dest: 1.8 },
+  hospital: { origin: 1.5, dest: 1.8 },
+};
+
+/** A floor with `special` set uses this table instead of its zone base. */
+const SPECIAL_SPAWN_WEIGHTS: Record<SpecialFloor, { origin: number; dest: number }> = {
+  skyLobby: { origin: 2.2, dest: 2.2 },
+  restaurant: { origin: 1.8, dest: 2.2 },
+  skybar: { origin: 1.8, dest: 2.2 },
+  parking: { origin: 1.3, dest: 1.3 },
+  lobby: { origin: 2.0, dest: 2.0 },
+  er: { origin: 2.2, dest: 2.2 },
+};
+
+function spawnWeights(floor: Floor): { origin: number; dest: number } {
+  return floor.special !== undefined
+    ? SPECIAL_SPAWN_WEIGHTS[floor.special]
+    : ZONE_SPAWN_WEIGHTS[floor.zone];
+}
+
+/** Relative chance a floor is chosen as a passenger ORIGIN (departure). */
+export function spawnOriginWeight(floor: Floor): number {
+  return spawnWeights(floor).origin;
+}
+
+/** Relative chance a floor is chosen as a passenger DESTINATION (arrival). */
+export function spawnDestWeight(floor: Floor): number {
+  return spawnWeights(floor).dest;
+}
 
 /**
  * Reference targets that map raw run stats to a 0..100 quality score (see

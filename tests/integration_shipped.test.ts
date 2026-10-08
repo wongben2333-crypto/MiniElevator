@@ -4,7 +4,7 @@ import { mulberry32, type Rng } from '../src/rng';
 import { applyCommand, createWorld, step } from '../src/sim';
 import type { SimConfig, World } from '../src/types';
 
-// The SHIPPED configuration: 180-second days (not the accelerated test day).
+// The SHIPPED configuration: 120-second days (not the accelerated test day).
 const cfg = DEFAULT_CONFIG;
 
 function advance(w: World, c: SimConfig, rng: Rng, ticks: number): void {

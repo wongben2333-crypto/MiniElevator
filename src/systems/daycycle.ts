@@ -2,7 +2,7 @@
 // Pure mutation of World in place. No tick increment, no DOM.
 
 import type { Floor, Phase, SimConfig, World } from '../types';
-import { UPGRADE_CHOICES, growthFloor } from '../config';
+import { MAX_ELEVATORS, UPGRADE_CHOICES, growthFloor } from '../config';
 
 /** Per-day demand growth applied by `demandScale`. */
 const DAY_DEMAND_GROWTH = 0.15;
@@ -49,7 +49,11 @@ export function stepDayCycle(world: World, cfg: SimConfig): void {
   if (world.tick > 0 && world.tick % cfg.dayLengthTicks === 0) {
     world.day += 1;
     world.dayEnded = true;
-    world.pendingUpgrade = UPGRADE_CHOICES.map((offer) => ({ ...offer }));
+    // At the elevator cap, "add elevator" is no longer offerable.
+    const atCap = world.elevators.length >= MAX_ELEVATORS;
+    world.pendingUpgrade = UPGRADE_CHOICES.filter(
+      (offer) => !(atCap && offer.kind === 'addElevator'),
+    ).map((offer) => ({ ...offer }));
     growBuilding(world);
   }
 }

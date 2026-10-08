@@ -66,6 +66,11 @@ export interface Passenger {
   id: PassengerId;
   from: FloorId;
   destZone: Zone;
+  /**
+   * The exact floor this passenger is headed to (real spawns set it). Routing
+   * targets it; when absent, any floor in `destZone` is accepted (legacy/zone mode).
+   */
+  destFloor?: FloorId;
   dir: 1 | -1;
   /** 1..4 people carried as one unit. */
   group: number;

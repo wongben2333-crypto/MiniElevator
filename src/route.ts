@@ -209,7 +209,12 @@ function collapse(world: World, path: PNode[]): Leg[] {
 }
 
 function search(world: World, passenger: Passenger, cfg: SimConfig, mode: RouteMode): Leg[] | null {
-  const goals = new Set<FloorId>(floorsMatching(world, passenger.destZone).map((f) => f.id));
+  // Target the passenger's specific destination floor when known; otherwise accept
+  // any floor in the destination zone (legacy/zone routing).
+  const goals =
+    passenger.destFloor !== undefined
+      ? new Set<FloorId>([passenger.destFloor])
+      : new Set<FloorId>(floorsMatching(world, passenger.destZone).map((f) => f.id));
   if (goals.has(passenger.atFloor)) return [];
   if (goals.size === 0) return null;
 
@@ -268,4 +273,20 @@ export function findPlan(world: World, passenger: Passenger, cfg: SimConfig): Le
   return cfg.routeMode === 'bfs'
     ? findPlanBFS(world, passenger, cfg)
     : findPlanAStar(world, passenger, cfg);
+}
+
+/**
+ * Plan a passenger's route, falling back from an unreachable exact `destFloor`
+ * to any floor in `destZone`. The fallback clears `destFloor` so the passenger
+ * still reaches its destination zone instead of being stranded with no plan.
+ * Returns an empty list only when neither the exact floor nor its zone is
+ * reachable (e.g. an unconnected growth floor).
+ */
+export function planPassenger(world: World, passenger: Passenger, cfg: SimConfig): Leg[] {
+  let plan = findPlan(world, passenger, cfg) ?? [];
+  if (plan.length === 0 && passenger.destFloor !== undefined) {
+    passenger.destFloor = undefined;
+    plan = findPlan(world, passenger, cfg) ?? [];
+  }
+  return plan;
 }

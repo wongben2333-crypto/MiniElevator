@@ -5,7 +5,7 @@ import { applyCommand, createWorld, step } from '../src/sim';
 import type { Passenger, SimConfig, World } from '../src/types';
 
 // Fast day (600 ticks = 10s) so a 3-day run stays cheap. This is NOT the shipped
-// balance — see integration_shipped.test.ts for full-length (180s) days.
+// balance — see integration_shipped.test.ts for full-length (120s) days.
 const fast: SimConfig = { ...DEFAULT_CONFIG, dayLengthTicks: 600 };
 
 function advance(w: World, cfg: SimConfig, rng: Rng, ticks: number): void {

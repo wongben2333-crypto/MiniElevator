@@ -2,9 +2,9 @@
 // command application. Owns the tick clock. Pure logic — no DOM, no randomness
 // of its own (the deterministic RNG is supplied by the caller).
 
-import { BUILDING, DEFAULT_CONFIG, ELEVATOR_PALETTE, ELEVATOR_SPECS, LOBBY_FLOOR } from './config';
+import { BUILDING, DEFAULT_CONFIG, ELEVATOR_PALETTE, ELEVATOR_SPECS, LOBBY_FLOOR, MAX_ELEVATORS } from './config';
 import { getFloor } from './queries';
-import { findPlan } from './route';
+import { planPassenger } from './route';
 import { mulberry32, type Rng } from './rng';
 import { stepBoarding } from './systems/boarding';
 import { stepDayCycle } from './systems/daycycle';
@@ -87,6 +87,7 @@ export function step(world: World, cfg: SimConfig, rng: Rng): void {
 }
 
 function isAtDestination(world: World, p: Passenger): boolean {
+  if (p.destFloor !== undefined) return p.atFloor === p.destFloor;
   const f = getFloor(world, p.atFloor);
   return f !== undefined && f.zone === p.destZone;
 }
@@ -110,7 +111,7 @@ function replanWaiting(world: World, cfg: SimConfig): void {
       deliverArrived(world, p);
       continue;
     }
-    p.plan = findPlan(world, p, cfg) ?? [];
+    p.plan = planPassenger(world, p, cfg);
     p.legIndex = 0;
   }
 }
@@ -146,11 +147,11 @@ function dropOrphanedRiders(world: World, e: Elevator): void {
   e.load = survivors;
 }
 
-function addElevator(world: World, spec: ElevatorSpec): Elevator {
+/** Add a car when the network is below `MAX_ELEVATORS`; otherwise no-op. */
+function addElevator(world: World, spec: ElevatorSpec): void {
+  if (world.elevators.length >= MAX_ELEVATORS) return;
   const id = world.elevators.reduce((max, e) => Math.max(max, e.id), -1) + 1;
-  const e = elevatorFromSpec(id, spec);
-  world.elevators.push(e);
-  return e;
+  world.elevators.push(elevatorFromSpec(id, spec));
 }
 
 /** A relief car that serves every floor — the day-end "add elevator" upgrade. */
