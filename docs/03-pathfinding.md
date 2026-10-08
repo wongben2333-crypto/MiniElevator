@@ -34,7 +34,7 @@ type PNode =
 节点规模 = 层数 × (1 + 停靠该层的电梯数)，通常几十个。单次 A* 微秒级。
 
 **起点**：`{kind:'floor', floor: from}`
-**终点集合**：所有满足"目的区/类型"匹配的楼层（Mini Metro 是"目的形状"，本作是"目的区/类型"）。取其中 A* 代价最小者。
+**终点集合**：优先取 `passenger.destFloor` 指定的**那一层具体楼层**（就是乘客徽标上显示的目的楼层数字，目标集合退化成单元素）；未设置 `destFloor` 时才退回"目的区/类型"匹配到的全部楼层，取其中 A* 代价最小者（Mini Metro 是"目的形状"，本作是"目的区/类型"）。
 
 ## 3. 边与权重
 
@@ -84,7 +84,10 @@ estWait(E, F) ≈ Σ(|相邻站距离|) * FLOOR_TRAVEL_TIME / speed
 ```ts
 function findPlan(world, passenger): Leg[] | null {
   const start = node('floor', passenger.from);
-  const goals = world.floorsMatching(passenger.destZone); // 目的层集合
+  // 终点：具体目的地优先，缺省才退回目的区集合
+  const goals = passenger.destFloor !== undefined
+    ? new Set([passenger.destFloor])
+    : new Set(world.floorsMatching(passenger.destZone));
   const open = MinHeap();            // 按 f = g + h 排序
   const g = new Map<PNode, number>();
   const came = new Map<PNode, PNode>();
@@ -113,11 +116,31 @@ function h(n, goals) {
 
 **输出**：`Leg[]`，每段 `Leg = { elevator, boardFloor, alightFloor, rideDir }`。乘客按 `Leg` 前进；到 `alightFloor` 后进入下一段（即换乘）。
 
+### 5.1 具体目的地的回退 `planPassenger`
+
+"必须到某一层"是本作相对 Mini Metro 的加码，但也带来风险：那一层可能**当前根本没接进网络**（典型如刚加建、玩家还没连线的楼层）。若硬等，玩家会被一个死目标卡住。因此规划统一走一层回退：
+
+```ts
+/** 返回空数组 = 当前网络里无路可走。副作用：可能清空 passenger.destFloor。 */
+function planPassenger(world, passenger, cfg): Leg[] {
+  let plan = findPlan(world, passenger, cfg) ?? [];
+  if (plan.length === 0 && passenger.destFloor !== undefined) {
+    passenger.destFloor = undefined;              // 该层不可达 → 放弃具体目的地
+    plan = findPlan(world, passenger, cfg) ?? []; // 按 destZone 任一层重算
+  }
+  return plan;
+}
+```
+
+- **清空而非保留**：留着不可达的 `destFloor` 会让"重算时机"里的每次拓扑变化都再失败一次；清空后乘客按目的区走，玩家之后把那一层接进网络时，他自然会被重算到更近的路径。
+- **两次皆失败返回 `[]`**，此时由调用方（生成系统 `systems/spawn.ts`）**直接跳过该乘客**——宁可少一个人，也不凭空造出一个永远没有路线的滞留者把楼层压力条顶爆。
+- 图模型 `(floor, elevator)` 与 §3 的 A*/BFS 边权公式**完全不变**；回退只发生在"终点集合怎么取"这一层。
+
 ## 6. 重算时机（关键：别每帧跑）
 
 | 触发 | 说明 |
 |---|---|
-| 乘客生成时 | 算一次计划 |
+| 乘客生成时 | 走 `planPassenger`：先算到 `destFloor`，不可达再退目的区；两次皆失败则**不生成该乘客** |
 | 网络拓扑改变 | 玩家编辑线路 / 增梯 / 改策略后，对**受影响**乘客重算 |
 | 无计划的等待者 | 每次拓扑变化时，尝试为"WAIT 且无计划"的乘客再算一次 |
 | （可选）定时 | 每 N 秒对等待者重算，处理拥堵漂移 |

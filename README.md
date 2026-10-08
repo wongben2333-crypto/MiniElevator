@@ -10,8 +10,8 @@
 
 | 项 | 状态 |
 |---|---|
-| 阶段 | **可玩 MVP + M3 完成**（M0–M3） |
-| 测试 | `npm.cmd test` 123 通过 / 21 文件；typecheck、build 通过 |
+| 阶段 | **可玩 MVP + M3 完成 + M4 移动端触控完成**（M0–M3 完成，M4 部分） |
+| 测试 | `npm.cmd test` 180 通过 / 27 文件；typecheck、build、build:demo 通过 |
 | 定位 | 个人实验项目，**轻量优先** |
 | 技术基调 | Canvas 2D + TypeScript + Vite + Vitest，**运行期 0 依赖** |
 | 参考 | Mini Metro（Dinosaur Polo Club）的乘客寻路与"观察型系统"设计 |
@@ -22,7 +22,11 @@
 
 **开发运行**：`npm.cmd install` → `npm.cmd run dev`（默认 http://localhost:5173）。也可 `npm.cmd run build` + `npm.cmd run preview`。
 
+**移动端**：支持竖屏。页面居中为手机列（`min(100vw,460px) × 100dvh`），Canvas 按 `devicePixelRatio` 高清渲染，`ResizeObserver` / 转屏自动重算；横屏会提示「请竖屏使用」。
+
 **操作**：点按「电梯 × 楼层」格子 = 切换该层是否停靠；点轿厢 = 选中 / 再点切换策略；空格 = 暂停；`1` / `2` = 选择每日升级。
+
+**底部控制栏**（移动端无键盘必备）：暂停 / 继续、`1×`、`2×`（2× 仅加速模拟，渲染保持平滑）。日终升级改为**可点按卡片**，不依赖数字键。
 
 > Windows 下一律用 `npm.cmd` / `npx.cmd`（`npm.ps1` 被执行策略禁用）。可用 `?seed=3` 指定随机种子。当前状态见 [08 · 交接与进度](docs/08-handoff.md)。
 
@@ -50,7 +54,7 @@
 
 ## 下一步
 
-见 [08 · 交接与进度](docs/08-handoff.md) §8。优先级：M4（突发事件 / 多地图 / 移动端；**M3 已完成**、**极简化与光照已完成**；**不做音效**）。
+见 [08 · 交接与进度](docs/08-handoff.md) §8。优先级：M4（**移动端触控已完成**、极简化与光照已完成；剩余突发事件 / 多建筑地图 / 进阶升级；**不做音效**）。
 
 ## 命名
 

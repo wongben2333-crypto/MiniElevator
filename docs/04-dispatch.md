@@ -106,6 +106,9 @@ function shouldStop(elev, floor, pending, phase): boolean {
 | `BOARD_TIME_PER_PERSON` | 每人上下客耗时（秒） | 0.3–0.5 |
 | `IDLE_FLOOR` | 待命/返程目标层 | 大堂(1F) |
 | `SKIP_COOLDOWN` | 满载跳过后冷却 | 0 |
+| `MAX_ELEVATORS` | 同时运行的电梯数上限（井道资源） | 5 |
+
+> `MAX_ELEVATORS = 5` 对应 Mini Metro 的"隧道数"：它是**硬上限**，写在 `config.ts`。一旦达到上限，日终升级就不再提供「新增电梯」，只剩「容量 +4」——逼玩家转向调度策略和换乘布局，而不是继续堆梯。竖屏布局也按 5 部预留井道间距（见 [05 · 数据模型](05-data-model.md) 的 `view.ts` 几何）。
 
 ## 9. 不做清单
 
