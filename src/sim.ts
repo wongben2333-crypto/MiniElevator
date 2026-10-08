@@ -40,6 +40,7 @@ function elevatorFromSpec(id: number, spec: ElevatorSpec): Elevator {
     policy: spec.policy,
     pos: start,
     posPrev: start,
+    vel: 0,
     dir: 1,
     state: 'IDLE',
     targetStopIndex: 0,

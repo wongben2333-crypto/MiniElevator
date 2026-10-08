@@ -12,7 +12,9 @@ import type {
 export const DEFAULT_CONFIG: SimConfig = {
   simHz: 60,
   floorTravelBase: 0.5,
-  dwellTime: 2.5,
+  accel: 4,
+  dwellTime: 1.2,
+  boardTimePerPerson: 0.4,
   transferPenalty: 10,
   backtrackPenalty: 6,
   alightTime: 0,

@@ -17,16 +17,17 @@ function anyWorkAhead(world: World, e: Elevator, idx: number, dir: 1 | -1): bool
 }
 
 export function stepBoarding(world: World, cfg: SimConfig): void {
-  void cfg;
   for (const e of world.elevators) {
     if (e.state !== 'DWELL') continue;
     const floorId = e.stops[e.targetStopIndex];
     const floor = getFloor(world, floorId);
     if (floor === undefined) continue;
 
+    let served = 0;
     // ALIGHT FIRST — frees capacity before boarding.
     for (const p of pendingAlight(world, e.id, floorId)) {
       e.load = e.load.filter((id) => id !== p.id);
+      served += p.group;
       if (p.plan.length === 0 || p.legIndex >= p.plan.length - 1) {
         p.state = 'DONE';
         world.passengers.delete(p.id);
@@ -67,10 +68,17 @@ export function stepBoarding(world: World, cfg: SimConfig): void {
         p.state = 'RIDE';
         p.onElev = e.id;
         e.load.push(p.id);
+        served += p.group;
       }
     }
 
     // Guard: drop waiting ids whose passenger no longer exists.
     floor.waiting = floor.waiting.filter((id) => world.passengers.has(id));
+
+    // Doors stay open longer the more people are served (boarding / alighting time).
+    if (served > 0) {
+      const ticks = Math.round((cfg.dwellTime + served * cfg.boardTimePerPerson) * cfg.simHz);
+      e.dwellUntilTick = Math.max(e.dwellUntilTick, world.tick + ticks);
+    }
   }
 }

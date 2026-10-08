@@ -239,4 +239,33 @@ describe('stepBoarding — board and alight', () => {
 
     expect(f2.waiting).toEqual([]);
   });
+
+  it('keeps the doors open longer the more people are served', () => {
+    const p = passenger(1, 1, 'office', {
+      group: 2,
+      state: 'WAIT',
+      atFloor: 1,
+      plan: [leg(1, 1, 3, 1)],
+    });
+    const f1 = floor(1, 'lobby', { waiting: [1] });
+    const e = elevator(1, [1, 3], {
+      state: 'DWELL',
+      targetStopIndex: 0,
+      dir: 1,
+      capacity: 8,
+      dwellUntilTick: 0,
+    });
+    const w = world({
+      tick: 100,
+      floors: [f1, floor(3, 'office')],
+      elevators: [e],
+      passengers: new Map([[1, p]]),
+    });
+
+    stepBoarding(w, cfg);
+
+    expect(e.load).toEqual([1]);
+    const expected = 100 + Math.round((cfg.dwellTime + 2 * cfg.boardTimePerPerson) * cfg.simHz);
+    expect(e.dwellUntilTick).toBe(expected);
+  });
 });

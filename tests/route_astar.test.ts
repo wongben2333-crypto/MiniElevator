@@ -187,12 +187,15 @@ describe('findPlanAStar', () => {
         elevator(3, [5, 10], { pos: 5, dir: 1 }),
       ],
     });
+    // A small transfer penalty so the time-saving transfer still beats the direct
+    // crawl under the current per-stop time model.
+    const c = cfg({ transferPenalty: 3 });
     const p = passenger(1, 1, 'retail');
-    const astar = expectPlan(findPlanAStar(w, p, cfg()));
+    const astar = expectPlan(findPlanAStar(w, p, c));
     const bfs = expectPlan(findPlanBFS(w, p, cfg({ routeMode: 'bfs' })));
 
-    const astarCost = planCost(w, astar, cfg(), 1);
-    const bfsCost = planCost(w, bfs, cfg(), 1);
+    const astarCost = planCost(w, astar, c, 1);
+    const bfsCost = planCost(w, bfs, c, 1);
 
     expect(bfs).toHaveLength(1); // BFS minimizes legs, ignores time.
     expect(astar).toHaveLength(2); // A* accepts a transfer to save time.

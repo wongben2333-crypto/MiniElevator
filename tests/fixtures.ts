@@ -35,6 +35,7 @@ export function elevator(id: number, stops: number[], opts: Partial<Elevator> = 
     policy: opts.policy ?? 'SCAN',
     pos: start,
     posPrev: opts.posPrev ?? start,
+    vel: opts.vel ?? 0,
     dir: opts.dir ?? 1,
     state: opts.state ?? 'IDLE',
     targetStopIndex: opts.targetStopIndex ?? 0,

@@ -44,6 +44,8 @@ export interface Elevator {
 
   pos: number;
   posPrev: number;
+  /** Signed vertical velocity in floors/second (accelerates toward / brakes before stops). */
+  vel: number;
   dir: 1 | -1 | 0;
   state: ElevatorState;
   targetStopIndex: number;
@@ -128,7 +130,12 @@ export interface SimConfig {
   simHz: number;
   /** Seconds per floor before dividing by speed. */
   floorTravelBase: number;
+  /** Acceleration in floors/second² (spin-up and braking). */
+  accel: number;
+  /** Base door-open time per stop (seconds); grows with people served. */
   dwellTime: number;
+  /** Extra door time per person that boards or alights (seconds). */
+  boardTimePerPerson: number;
   transferPenalty: number;
   backtrackPenalty: number;
   alightTime: number;

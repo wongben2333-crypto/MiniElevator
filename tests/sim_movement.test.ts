@@ -14,8 +14,30 @@ const leg = (elevatorId: number, board: number, alight: number, dir: 1 | -1): Le
 });
 
 describe('stepMovement — MOVING', () => {
-  it('advances pos by speed/simHz per tick and updates posPrev every tick', () => {
+  it('accelerates from rest toward the target', () => {
     const e = elevator(1, [1, 2, 3], { pos: 1, dir: 1, state: 'MOVING', targetStopIndex: 1 });
+    const w = world({ elevators: [e] });
+    const maxStep = e.speed / cfg.simHz;
+
+    stepMovement(w, cfg);
+
+    expect(e.vel).toBeGreaterThan(0);
+    expect(e.vel).toBeLessThan(e.speed);
+    expect(e.pos - 1).toBeGreaterThan(0);
+    expect(e.pos - 1).toBeLessThan(maxStep);
+  });
+
+  it('reaches cruise speed over several ticks when the target is far', () => {
+    const e = elevator(1, [1, 10], { pos: 1, dir: 1, state: 'MOVING', targetStopIndex: 1 });
+    const w = world({ elevators: [e] });
+    for (let i = 0; i < 120; i += 1) stepMovement(w, cfg);
+    expect(e.vel).toBeGreaterThan(e.speed * 0.99);
+    expect(e.vel).toBeLessThanOrEqual(e.speed + 1e-9);
+  });
+
+  it('cruises at max speed and updates posPrev / energy each tick', () => {
+    const e = elevator(1, [1, 10], { pos: 1, dir: 1, state: 'MOVING', targetStopIndex: 1 });
+    e.vel = e.speed;
     const w = world({ elevators: [e] });
     const perTick = e.speed / cfg.simHz;
 
@@ -43,13 +65,13 @@ describe('stepMovement — MOVING', () => {
 
 describe('stepMovement — arrival', () => {
   it('snaps exactly onto the target and enters DWELL with tick + round(dwellTime*simHz)', () => {
-    const e = elevator(1, [1, 2, 3], { pos: 1.99, dir: 1, state: 'MOVING', targetStopIndex: 1 });
+    const e = elevator(1, [1, 2, 3], { pos: 1.999, dir: 1, state: 'MOVING', targetStopIndex: 1 });
     const w = world({ tick: 7, elevators: [e] });
 
     stepMovement(w, cfg);
 
     expect(e.pos).toBe(2);
-    expect(e.posPrev).toBe(1.99);
+    expect(e.posPrev).toBe(1.999);
     expect(e.state).toBe('DWELL');
     expect(e.dwellUntilTick).toBe(7 + Math.round(cfg.dwellTime * cfg.simHz));
   });
